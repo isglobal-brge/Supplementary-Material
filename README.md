@@ -2,7 +2,7 @@
 
 This directory contains scripts and files supporting publications from the BRGE lab.
 
-**Ruiz-Arenas, Carlos et al., Genome Research, 2020
+**Ruiz-Arenas, Carlos et al., Genome Research, 2020**
 
 [Ruiz-Arenas et al.](https://www.biorxiv.org/content/10.1101/792747v1), 2020, A method to identify chromosomal subpopulations based on their recombination histories advances the study of the genetic basis of phenotypic traits.  
 
