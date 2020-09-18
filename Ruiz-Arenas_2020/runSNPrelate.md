@@ -1,12 +1,3 @@
----
-title: "Run SNPrelate"
-output: html_document
----
-  
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 Run SNPrelate in the regions described in the paper.

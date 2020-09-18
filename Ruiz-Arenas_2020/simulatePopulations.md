@@ -1,12 +1,3 @@
----
-title: "Evalute recombClust accuracy in synthetic populations"
-output: html_document
----
-  
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 Evalute recombClust accuracy in synthetic populations with different number of chromosomes or SNP-blocks. Simulate two populations with different combinations of blocks. The algorithm is described in the section *Subpopulations with different combinations of blocks* from generateSyntheticDatasets.Rmd.

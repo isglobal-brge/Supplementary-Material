@@ -1,12 +1,3 @@
----
-title: "Run recombClust in inversions in Drosophila"
-output: html_document
----
-  
-  ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 Run recombClust in inversions in Drosophila. Pre-filter SNPs with MAF > 0.05 and call rate > 0.95 and individuals with call rate > 0.95.

@@ -1,12 +1,3 @@
----
-title: "Generate inversions with invertFREGENE "
-output: html_document
----
-  
-  ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 Generate inversions with invertFREGENE, analyze with recombClust and compute accuracy.

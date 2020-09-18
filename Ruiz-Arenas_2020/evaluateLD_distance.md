@@ -1,11 +1,3 @@
----
-title: "Code to generate Sup Fig S2"
-output: html_document
----
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 This documents show how to generate Sup Fig S2, the association between linkage disequilibrium R2 difference and distance for inv8p23.1.

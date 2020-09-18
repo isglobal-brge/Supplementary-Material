@@ -1,12 +1,3 @@
----
-title: "Generate syntethic datasets"
-output: html_document
----
-  
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 This document contains the code to generate the syntethic datasets used to evaluate recombClust performance. 

@@ -1,12 +1,3 @@
----
-  title: "Evalute recombClust accuracy in simulated invesions with expansion"
-output: html_document
----
-  
-  ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 Evalute recombClust accuracy in simulated invesions with expansion. This script analyses the inversion generated with nextflow:

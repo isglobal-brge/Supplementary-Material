@@ -1,12 +1,3 @@
----
-title: "Compute recombination patterns of inv8p23.1 with FastEPRR"
-output: html_document
----
-  
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-```
-
 # Summary
 
 This document shows how to compute the recombination patterns with FastEPRR. We used this code to compute the recombination patterns for each recombClust group of inv8p23.1 in European samples of 1000 Genomes. It requires the R package `FastEPRR`, and the python script FASTEPPR_parser.py to process the output.
