@@ -1,0 +1,49 @@
+---
+title: "Preprocess GTEx files"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+Phase GTEx files to analyze them with recombClust. 
+
+# Phase GTEx data
+
+## Cut GTEX vcf
+
+```{bash}
+preproc=results/preproc
+vcftools --gzvcf data/GTEX.vcf.gz --chr 1 --from-bp 145000000 --to-bp 145900000 --out $preproc/GTEX_chr1_region --recode
+```
+
+## Filter non-biallelic sites and sites with calling rate < 95%
+
+```{bash}
+vcftools --vcf $preproc/GTEX_chr1_region.recode.vcf --min-alleles 2 \
+  --max-alleles 2 --remove-indels --max-missing 0.95 \
+  --out $preproc/GTEX_chr1.filt --recode
+```
+
+
+## Phase with shapeit  ####
+
+```{bash}
+shapeit -V $preproc/GTEX_chr1.filt.recode.vcf \
+--input-map ~/PublicData/REFERENCES/reference_panels/genetic_map_chr1_combined_b37.txt \
+--output-max $preproc/final_phase --thread 8
+
+shapeit -convert --input-haps $preproc/final_phase --output-vcf $preproc/final.phased.vcf
+bgzip $preproc/final.phased.vcf
+tabix -p vcf $preproc/final.phased.vcf.gz
+```
+
+
+## Extract qual column
+
+```{bash}
+bcftools query -f '%ID\t%POS\t%QUAL\n' $preproc/GTEX_chr1.filt.recode.vcf > $preproc/GTEX_stats.tab
+```

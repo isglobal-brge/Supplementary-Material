@@ -1,0 +1,220 @@
+---
+title: "Figure 4: Plot LCT region"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+Create Figure 4 plot (LCT region).
+
+## Load libraries and data
+
+```{r}
+library(ggplot2)
+library(Gviz)
+library(GenomicRanges)
+library(VariantAnnotation)
+library(cowplot)
+
+modFold  <- "results/models/"
+load(paste0(modFold, "reg24recombRes.Rdata"))
+```
+
+## Create ideogram track
+
+```{r}
+basetracks <- list(IdeogramTrack(genome = "hg19", chromosome = "chr2"), 
+                   Gviz::GenomeAxisTrack())
+```
+
+
+## Create transcripts track
+
+```{r}
+data(dmrcatedata, envir = environment(), package = "DMRcatedata")
+
+## Select only protein coding genes
+txs <- subsetByOverlaps(tx.hg19, range)
+txs <-  subset(txs, gene_type == "protein_coding")
+
+genes <- Gviz::GeneRegionTrack(txs, name = "Transcripts", 
+                               symbol = txs$gene_name, 
+                               fill = "lightblue", 
+                               gene = txs$gene_name,
+                               showId = TRUE, geneSymbol = TRUE, cex.title = 0.7,
+                               shape = "arrow", transcriptAnnotation = "symbol",
+                               collapseTranscripts = TRUE, rotation.title = 0)
+```
+
+## Global recombination track
+
+Use recombination rates from Bherer et al (2017).
+
+```{r}
+track <- import("data/recomb_Bherer2017_sexavg_10kb.bw", format = "BigWig")
+ratetrack <- DataTrack(track, type ="a", name = "Behrer et al\nrecombination\nrate (cM/Mb)",
+                       cex.title = 0.7)
+```
+
+## FastEPPR track
+
+Load recombination rates from FastEPRR generated in LCTregion.Rmd
+```{r}
+al1 <- read.table("results/FEPPR/cl1/cl1.txt", header = TRUE)
+al2 <- read.table("results/FEPPR/cl2/cl2.txt", header = TRUE)
+rownames(al1) <- al1$Start
+rownames(al2) <- al2$Start
+
+```
+
+Create track with cluster 1 and 2 recombination rates.
+
+```{r}
+allNames <- union(rownames(al1), rownames(al2))
+al1 <- al1[allNames, ]
+rownames(al1) <- allNames
+al1$al2Rho <- al2[rownames(al1), "Rho"]
+al1$Start <- al1$Start * 1000
+al1$End <- al1$End * 1000
+al1$Chr <- "chr2"
+
+FGR <- makeGRangesFromDataFrame(al1[, -(4:5)], keep.extra.columns = TRUE)
+FastEPPRtrack <- DataTrack(FGR, type ="a", name = "FastEPPR\nrecombination rate\n(cM/Mb)",
+                           groups = c("Allele 1", "Allele 2"),
+                           col = c("#81267c", "#e3c67a"),
+                           cex.title = 0.7)
+```
+
+Track with difference in recombination rates between cluster 1 and 2.
+
+```{r}
+FGR$Diff <- FGR$al2Rho - FGR$Rho
+FEPPRDifftrack <- DataTrack(FGR, type =c("a", "mountain"), baseline = 0, data =  FGR$Diff, 
+                            name = "Recombination\ndifference (Al2-Al1)", 
+                            fill.mountain = c("#81267c", "#e3c67a"),
+                            col = "black",
+                            cex.title = 0.7)
+```
+
+## Compute recombClust recombination probabilities
+
+Define functions
+
+```{r}
+getRecombProb <- function(classvec, class, indsmat, overLaps){
+  
+  ## Select cluster individuals
+  indsmat1 <- indsmat[classvec == class, ]
+  
+  ## Compute cluster Recomb freq by mean of voting
+  sapply(seq_len(overLaps@nLnode), function(chunk){
+    
+    sel <- to(overLaps)[from(overLaps) == chunk]
+    mat <- indsmat1[, sel, drop = FALSE]
+    val <- mean(rowMeans(mat > 0.5) > 0.5)
+  })
+}
+```
+
+Divide LCT region in windows.
+
+```{r}
+range <- GRanges("chr2:135770000-136900000")
+
+mat <- recomb$mat
+width <- 5e4
+starts <- seq(start(range), end(range), width)
+chunks <- GRanges(seqnames = as.character(seqnames(range)), 
+                  IRanges(start = starts, width = width))
+```
+
+Compute recombination probabilities per window.
+
+```{r}
+coords <- data.frame(t(sapply(recomb$models, function(x) x$annot)))
+coords$chr <- as.character(seqnames(range))
+grMods <- makeGRangesFromDataFrame(coords)
+
+overNum <- countOverlaps(chunks, grMods)
+overAll <- findOverlaps(chunks, grMods)
+
+clusProbs <- lapply(unique(recomb$class), getRecombProb, 
+                    classvec = recomb$class, 
+                    indsmat = mat, overLaps = overAll)
+
+```
+
+## RecombClust track
+```{r}
+df <- data.frame(chr = "chr2", start = starts, end = starts + 5e4, 
+                 RhoAl1 = clusProbs[[1]], RhoAl2 = clusProbs[[2]])
+recombGR <- makeGRangesFromDataFrame(df, keep.extra.columns = TRUE)
+recombTrack <- DataTrack(recombGR, type ="a", name = "Recomb proportion",
+                         groups = c("Allele 1", "Allele 2"),
+                         col = c("#81267c", "#e3c67a"),
+                         cex.title = 0.7)
+
+
+recombGR$Diff <- recombGR$RhoAl2 - recombGR$RhoAl1
+recombDifftrack <- DataTrack(recombGR, type =c("a", "mountain"),  baseline = 0,
+                             data =  recombGR$Diff, 
+                             name = "Difference in\nrecomb proportion\n(Al2-Al1)", 
+                             col = "black", 
+                             fill.mountain = c("#81267c", "#e3c67a"),
+                             cex.title = 0.7)
+```
+
+
+## Make plot
+```{r}
+png("./results/iHS/LCTRegionGviz.png", width = 30, height = 25, units = 'cm', res = 300)
+Gviz::plotTracks(c(basetracks, genes, ratetrack, FastEPPRtrack, FEPPRDifftrack, 
+                   recombTrack, recombDifftrack), 
+                 sizes = c(1, 1,  1, 2, 4, 4, 4, 4), 
+                 from = start(range), to = end(range), 
+                 groupAnnotation = "group",
+                 fontcolor.title = "black",
+                 col.axis = "black",
+                 background.title = "grey90")
+dev.off()
+```
+
+# recombClust PCA of LCT region
+
+```{r}
+pc <- recomb$pc$x
+recClass <- factor(recomb$class)
+
+df <- data.frame(pc)
+df$class <- recClass[rownames(df)]
+
+vars <- recomb$pc$sdev^2/sum(recomb$pc$sdev^2)
+mds <- ggplot(df, aes(x = PC1, y = PC2, color = class)) +
+  # Plot genotyped
+  geom_point(size = 0.2) + 
+  # Change colors
+  scale_color_manual(values = c("#81267c", "#e3c67a"), 
+                    labels = c("Allele 1", "Allele 2"), 
+                    breaks = c("1", "2"), na.value = "black", 
+                    name = "") +
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5),
+                     panel.grid.major = element_blank(), 
+                     panel.grid.minor = element_blank())  +
+  scale_x_continuous(name = paste(sprintf("PC1 (%.2f", vars[1]*100), "%)")) +
+  scale_y_continuous(name = paste(sprintf("PC2 (%.2f", vars[2]*100), "%)"))
+```
+
+# Final plot
+
+```{r}
+up <- plot_grid(NULL, mds, NULL, ncol = 3, rel_widths = c(1, 3, 1))
+p2 <- ggdraw() + draw_image("./results/iHS/LCTRegionGviz.png")
+
+png("results/models/LCT_comb.png", width = 1500, height = 1700, res = 300)
+plot_grid(up, p2, labels = "AUTO", ncol = 1, rel_heights = c(1, 3))
+dev.off()
+```

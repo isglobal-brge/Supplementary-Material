@@ -1,0 +1,78 @@
+---
+title: "Sup Figure S9: Run recombClust in 1000 Genomes in random region"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+Run recombClust in a random region using European 1000 Genomes individuals
+
+## Load libraries
+
+```{r}
+library(recombClust)
+library(GenomicRanges)
+library(VariantAnnotation)
+library(parallel)
+library(snpStats)
+library(BiocParallel)
+library(rtracklayer)
+library(ggplot2)
+
+source("~/InversionNGSutils.R")
+```
+
+
+## Select random region 
+
+In the same chromosome than TAR, contains a gene and does not have signal of selection
+
+```{r}
+range <- GRanges("1:14600000-15000000")
+```
+
+## Load data 
+
+```{r}
+load("data/Samples_Pop1GK.Rdata")
+EUR <- rownames(samp_pop)[samp_pop$superpop == "EUR"]
+
+thousand <- getVCFmatrixChr(range, samples = EUR, minmaf = 0.05, 
+                            vcffile = "data/1000G_chr1.vcf.gz")
+```
+
+## Run recombClust 
+
+```{r}
+GR1000G <- makeGRangesFromDataFrame(thousand$map, start.field = "position", 
+                                    end.field = "position")
+thousand_res <- runRecombClust(as(thousand$genotypes, "numeric")/2, 
+                               annot = GR1000G, BPPARAM = MulticoreParam(30), 
+                               clusters = 2, PCs = 2)
+save(thousand_res, file = "results/models/recombClust_1000G_random.Rdata") 
+```
+
+## Plot recombClust PCA
+
+```{r}
+t_df <- data.frame(thousand_res$pc$x)
+
+vars <- thousand_res$pc$sdev^2/sum(thousand_res$pc$sdev^2)
+t_mds <- ggplot(t_df, aes(x = PC1, y = PC2)) +
+  # Plot genotyped
+  geom_point() + 
+  ggtitle("chr1:14.6-15Mb") + 
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5),
+                     panel.grid.major = element_blank(), 
+                     panel.grid.minor = element_blank(),
+                     legend.position = "none") +
+  scale_x_continuous(name = paste(sprintf("PC1 (%.2f", vars[1]*100), "%)")) +
+  scale_y_continuous(name = paste(sprintf("PC2 (%.2f", vars[2]*100), "%)"))
+png("results/figures/randomRegion_MDS.png", width = 900, height = 900, res = 300)
+t_mds
+dev.off()
+```

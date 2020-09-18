@@ -1,0 +1,191 @@
+---
+title: "Additional analysis of LCT region"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+This document contains the code for the additional analysis of LCT region: correlation with 1000 Genomes European subpopulations, correlation with SNP associated with lactose tolerance and recombination patterns estimation with FastEPRR.
+
+# Compute cluster frequencies per population
+
+## Load data and libraries
+
+```{r}
+fold <- "results/models/"
+load(paste0(fold, "reg24recombRes.Rdata")) ## recombClust results of LCT region
+load("data/Samples_Pop1GK.Rdata") ## Ancestry data from 1000 Genomes
+```
+
+Correlate recombClust cluster frequencies with European subpopulations from 1000 Genomes.
+
+```{r}
+pop <- samp_pop$pop
+names(pop) <- samp_pop$name
+popChr <- rep(pop, each = 2)
+names(popChr) <- paste(rep(names(pop), each = 2), 1:2, sep = "_")
+
+class <- recomb$class
+prop.table(table(popChr[names(class)], class), margin = 1)
+
+# class
+# 1         2
+# CEU 0.7979798 0.2020202
+# FIN 0.6565657 0.3434343
+# GBR 0.7417582 0.2582418
+# IBS 0.5981308 0.4018692
+# TSI 0.2850467 0.7149533
+```
+
+# Compute frequency SNPs for lactose intolerace per cluster 
+
+Use rs4988235 as tag SNP for lactose intolerance.
+
+## Get classification at individual level
+
+Combine recombClust classification at chromosome level at the individual level.
+
+```{r}
+genoclass <- sapply(seq(1, length(class), 2), function(x) { 
+  a <- paste(sort(class[x:(x+1)]), collapse = "-")
+})
+sampNames <- substring(names(class), 1, nchar(names(class))-2)
+names(genoclass) <- sampNames[!duplicated(sampNames)]
+```
+
+## Load tag SNP genotypes
+
+LCT.filt.vcf.gz is a VCF file containing the SNPs from the LCT region, obtained from all 1000 Genomes samples.
+
+```{r}
+library(VariantAnnotation)
+range <- GRanges("2:136608645-136608647")
+vcf <- readVcf("results/iHS/LCT.filt.vcf.gz", genome = "hg19", 
+               param = ScanVcfParam(which = range)) 
+```
+
+```{r}
+t <- table(unlist(strsplit(geno(vcf)$GT, "|", fixed = TRUE)), class)
+t2 <- addmargins(prop.table(t))
+r <- (t2[1, 1] - t2[1, 3]*t2[3, 1])/sqrt(t2[1, 3]*(1-t2[1, 3])*t2[3, 1]*(1-t2[3, 1]))
+r**2
+
+df <- data.frame(a = names(genoclass), b = names(genoclass))
+write.table(df[genoclass == "1-1", ], file = "results/iHS/cl1.tab", quote = FALSE,
+            row.names = FALSE, col.names = FALSE)
+write.table(df[genoclass == "2-2", ], file = "results/iHS/cl2.tab", quote = FALSE,
+            row.names = FALSE, col.names = FALSE)
+```
+
+
+# Run FastEPRR
+
+Use FastEPRR to estimate recombination patterns.
+
+## Prepare folders for FastEPRR
+
+```{bash}
+fast=results/FEPPR
+mkdir $fast
+mkdir $fast/cl1
+mkdir $fast/cl1/step1
+mkdir $fast/cl1/step1/step1
+mkdir $fast/cl1/step2
+
+mkdir $fast/cl2
+mkdir $fast/cl2/step1/
+mkdir $fast/cl2/step1/step1
+mkdir $fast/cl2/step2
+```
+
+## Prepare data
+
+```{r}
+library(FastEPRR)
+library(parallel)
+```
+
+Create vectors with chromosomes in each cluster:
+
+```{r}
+cl1 <- sapply(seq(1, length(class), 2), function(x) { 
+  a <- paste(ifelse(class[x:(x+1)] == 1, "1", "0"), collapse = ":")
+  paste0(substring(names(class)[x], 1, nchar(names(class)[x])-2), "[", a, "]")
+})
+
+### Remove samples with none of the chromosomes included
+cl1 <- cl1[!grepl("0:0", cl1, fixed = TRUE)]
+cl1 <- paste(cl1, collapse = ";")
+
+cl2 <- sapply(seq(1, length(class), 2), function(x) { 
+  a <- paste(ifelse(class[x:(x+1)] == 2, "1", "0"), collapse = ":")
+  paste0(substring(names(class)[x], 1, nchar(names(class)[x])-2), "[", a, "]")
+})
+
+### Remove samples with none of the chromosomes included
+cl2 <- cl2[!grepl("0:0", cl2, fixed = TRUE)]
+cl2 <- paste(cl2, collapse = ";")
+```
+
+## Run step 1
+
+```{r}
+## Allele 1
+FastEPRR_VCF_step1(vcfFilePath = "results/iHS/LCT.vcf.gz", 
+                   winLength="80", stepLength = "50", 
+                   idvlConsidered= cl1,
+                   erStart = "135700",
+                   erEnd = "136900",
+                   srcOutputFilePath= "results/FEPPR/cl1/step1/step1")
+
+## Allele 2
+FastEPRR_VCF_step1(vcfFilePath = "results/iHS/LCT.vcf.gz", 
+                   winLength="80", stepLength = "50", 
+                   idvlConsidered= cl2,
+                   erStart = "135700",
+                   erEnd = "136900",
+                   srcOutputFilePath= "results/FEPPR/cl2/step1/step1")
+```
+
+## Run step 2
+
+```{r}
+## Allele 1
+mclapply(1:24, FastEPRR_VCF_step2, 
+         srcFolderPath="results/FEPPR/cl1/step1/",
+         jobNumber = 24, mc.cores = 24,
+         DXOutputFolderPath = "results/FEPPR/cl1/step2")
+
+
+## Allele 2
+mclapply(1:24, FastEPRR_VCF_step2, 
+         srcFolderPath="results/FEPPR/cl2/step1/",
+         jobNumber = 24, mc.cores = 24,
+         DXOutputFolderPath = "results/FEPPR/cl2/step2")
+```
+
+## Run step3
+
+```{r}
+## Allele 1
+FastEPRR_VCF_step3(srcFolderPath = "results/FEPPR/cl1/step1/",
+                   DXFolderPath="results/FEPPR/cl1/step2", 
+                   finalOutputFolderPath="results/FEPPR/cl1/")
+
+## Allele 2
+FastEPRR_VCF_step3(srcFolderPath = "results/FEPPR/cl2/step1/",
+                   DXFolderPath="results/FEPPR/cl2/step2", 
+                   finalOutputFolderPath="results/FEPPR/cl2/")
+```
+
+
+## Run python parser (out of R)
+
+```{bash}
+python ~/data/CarlosRuiz/Inversions/InversionSequencing/FASTEPPR_parser.py -i $fast/cl1/chr_2 -o $fast/cl1/cl1.txt
+python ~/data/CarlosRuiz/Inversions/InversionSequencing/FASTEPPR_parser.py -i $fast/cl2/chr_2 -o $fast/cl2/cl2.txt
+```

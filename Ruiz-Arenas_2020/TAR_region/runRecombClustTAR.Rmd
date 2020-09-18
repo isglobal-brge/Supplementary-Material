@@ -1,0 +1,116 @@
+---
+title: "Run recombClust in 2 datasets in TAR region"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+Run recombClust in 1000 Genomes and GTEx in TAR region.
+
+## Load libraries
+
+```{r}
+library(recombClust)
+library(GenomicRanges)
+library(VariantAnnotation)
+library(parallel)
+library(snpStats)
+library(BiocParallel)
+library(rtracklayer)
+
+source("~/InversionNGSutils.R")
+
+range <- GRanges("1:145350000-145750000")
+```
+
+# Load data 
+## 1000 Genomes
+
+```{r}
+load("data/Samples_Pop1GK.Rdata")
+EUR <- rownames(samp_pop)[samp_pop$superpop == "EUR"]
+
+thousand <- getVCFmatrixChr(range, samples = EUR, minmaf = 0.05, 
+                            vcffile = "data/1000G_chr1.vcf.gz")
+```
+
+## GTEX
+
+```{r}
+ancestry <- read.csv("data/GTEX.het_check.csv")
+ancestry <- subset(ancestry, ancestry.prediction == "EUR" & ancestry.prob > 0.9)
+rownames(ancestry) <- ancestry$sample_id
+
+gtex <- getVCFmatrixChr(range, samples = rownames(ancestry), minmaf = 0.05, 
+                        vcffile = "results/preproc/final.phased.vcf.gz")
+```
+
+## Remove SNPs in segmental duplications
+
+```{r}
+rangeU <- GRanges("chr1:145350000-145750000")
+
+mySession <- browserSession("UCSC")
+genome(mySession) <- "hg19"
+segDups <- getTable(
+   ucscTableQuery(mySession, track = "Segmental Dups",
+                   range = rangeU, table = "genomicSuperDups"))
+segDupsGR <- makeGRangesFromDataFrame(segDups, start.field = "chromStart",
+                                      end.field = "chromEnd")
+seqlevels(segDupsGR) <- "1"
+
+GR1000G <- makeGRangesFromDataFrame(thousand$map, start.field = "position", 
+                                   end.field = "position")
+
+GRgtex <- makeGRangesFromDataFrame(gtex$map, start.field = "position", 
+                                   end.field = "position")
+
+over_1000 <- findOverlaps(GR1000G, segDupsGR)
+over_gtex <- findOverlaps(GRgtex, segDupsGR)
+
+thousand$genotypes <- thousand$genotypes[, -unique(from(over_1000))]
+GR1000G <- GR1000G[-unique(from(over_1000))]
+
+gtex$genotypes <- gtex$genotypes[, -unique(from(over_gtex))]
+GRgtex <- GRgtex[-unique(from(over_gtex))]
+
+```
+
+
+# Run recombClust 
+## Combine datasets
+
+```{r}
+comSNPs <- Reduce(intersect, lapply(list(thousand, gtex), 
+                                    function(x) colnames(x$genotypes)))
+all <- Reduce(rbind, lapply(list(thousand, gtex), 
+                            function(x) x$genotypes[, comSNPs]))
+GRsnps <- GR1000G[comSNPs]
+
+combined <- runRecombClust(as(all, "numeric")/2, 
+                         annot = GRsnps, BPPARAM = MulticoreParam(30), 
+                         clusters = 2, PCs = 2)
+save(combined, file = "results/models/recombClust_Combined_short.Rdata") 
+```
+
+## 1000G 
+
+```{r}
+thousand_res <- runRecombClust(as(thousand$genotypes, "numeric")/2, 
+                           annot = GR1000G, BPPARAM = MulticoreParam(30), 
+                           clusters = 2, PCs = 2)
+save(thousand_res, file = "results/models/recombClust_1000G_short.Rdata") 
+```
+
+## GTEx 
+
+```{r}
+gtex_res <- runRecombClust(as(gtex$genotypes, "numeric")/2, 
+                               annot = GRgtex, BPPARAM = MulticoreParam(30), 
+                               clusters = 2, PCs = 2)
+save(gtex_res, file = "results/models/recombClust_gtex_short.Rdata") 
+```

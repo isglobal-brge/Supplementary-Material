@@ -1,0 +1,113 @@
+---
+title: "Run subpopulation association with gene expression in GTEx"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+This document contains the code to run subpopulation association with gene expression in GTEx.
+
+## Load libraries and data
+
+```{r}
+library(limma)
+library(SummarizedExperiment)
+```
+
+
+## Load Gene Expression
+
+We will associate the recombClust clusters to gene expression in whole blood and lymphocytes.
+
+```{r}
+load("data/GTEX_SE.Rdata") ## GTEx RNAseq data in a SummarizedExperiment
+
+covars <- data.frame(t(read.table("data/whole_blood_covars.txt", 
+                                  header = TRUE, row.names = 1, as.is = TRUE)))
+covars_l <- data.frame(t(read.table("data/lymphos_covars.txt", 
+                                  header = TRUE, row.names = 1, as.is = TRUE)))
+load("results/models/recombClust_gtex_short.Rdata") ## recombClust results
+```
+
+# Add Clusters to SummarizedExperiment
+
+```{r}
+gtex <- as.character(gtex_res$class)
+names(gtex) <- names(gtex_res$class)
+
+genoclassGTEX <- sapply(seq(1, length(gtex), 2), function(x) { 
+  a <- paste(sort(gtex[x:(x+1)]), collapse = "-")
+  names(a) <- gsub("_[0-9]", "", names(gtex[x]))
+  a
+})
+rse_gene$clus <- genoclassGTEX[rse_gene$subjid]
+```
+
+## Remove samples without clusters
+
+```{r}
+rse_filt <- rse_gene[, !is.na(rse_gene$clus)]
+```
+
+## Code cluster as numeric (based on rare allele)
+
+```{r}
+rse_filt$clusNum <- sapply(regmatches(rse_filt$clus, gregexpr("2", rse_filt$clus)), length)
+```
+
+## Select whole blood samples
+
+```{r}
+rse_blood <- rse_filt[, rse_filt$smtsd == "Whole Blood"]
+```
+
+## Add covariables
+
+```{r}
+rownames(covars) <- gsub(".", "-", rownames(covars), fixed = TRUE)
+colData(rse_blood) <- cbind(colData(rse_blood), covars[rse_blood$subjid, ])
+
+form <- formula(paste0("~ clusNum + ", 
+                       paste(colnames(covars), collapse = " + ")))
+
+design <- model.matrix(form, colData(rse_blood))
+```
+
+## Remove samples with missing in covars
+
+```{r}
+rse_blood <- rse_blood[, rownames(design)]
+```
+
+
+## Remove low expressed genes
+
+```{r}
+rse_blood <- rse_blood[rowMeans(assay(rse_blood) > 10) > 0.1, ]
+```
+
+## Run voom + limma
+
+```{r}
+v <- voom(assay(rse_blood), design)
+fit <- lmFit(v, design, method = "robust")
+fit <- eBayes(fit)
+```
+
+## Select only genes in cluster region (hg38!!!)
+
+```{r}
+genesGR <- subsetByOverlaps(rowRanges(rse_blood), 
+                            GRanges("chr1:145685064-146049002"))
+genes <- names(genesGR)
+
+topTable(fit[genes, ], coef = 2)
+df_ANKRD35 <- data.frame(exp = v$E["ENSG00000198483.12", ], 
+                         geno = rse_blood$clusNum)
+
+save(fit, df_ANKRD35, file = "results/models/GTEX_GE_assocs_blood.Rdata")
+```

@@ -1,0 +1,71 @@
+---
+title: "Get tag SNPs in 1000 Genomes"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+This document contains the code to get tag SNPs for recombClust in TAR region.
+
+# Load libraries and data
+
+```{r}
+library(GenomicRanges)
+library(VariantAnnotation)
+library(snpStats)
+
+source("~/InversionNGSutils.R")
+
+load("data/Samples_Pop1GK.Rdata")
+load("results/models/recombClust_1000G.Rdata") ## Results from recombClust for TAR region
+```
+
+# Get genotypes in TAR region
+
+```{r}
+range <- GRanges("1:145350000-145750000")
+EUR <- rownames(samp_pop)[samp_pop$superpop == "EUR"]
+thousand <- getVCFmatrixChr(range, samples = EUR, minmaf = 0.05, 
+                            vcffile = "data/1000G_chr1.vcf.gz")
+geno <- as(thousand$genotypes, "numeric")
+```
+
+
+# Define recombClust classification
+
+```{r}
+set.seed(0)
+t_class <- kmeans(thousand_res$pc$x[, 2], centers = c(-5, 15))$cluster
+
+geno1000G <- sapply(seq(1, length(t_class), 2), function(x) { 
+  a <- paste(sort(t_class[x:(x+1)]), collapse = "-")
+  names(a) <- gsub("_[0-9]", "", names(t_class[x]))
+  a
+})
+```
+
+geno1000G are the recombClust classifications at the individual level.
+
+# Compute linkage between TAR SNPs and recombClust clusters
+
+```{r}
+computeR2 <- function(snp1, snp2){
+  tab <- table(snp1, snp2)/length(snp1)
+  
+  pA <- sum(tab[1:2])
+  pB <- sum(tab[c(1, 3)])
+  D <- tab[1]-pA*pB
+  D^2/(pA*(1-pA)*pB*(1-pB))
+}
+
+r2svec <- apply(geno, 2, computeR2, snp2 = t_class)
+
+GR1000G <- makeGRangesFromDataFrame(thousand$map, start.field = "position", 
+                                    end.field = "position")
+GR1000G$R2 <- r2svec[names(GR1000G)]
+save(r2svec, GR1000G,  file = "results/models/1000G_R2s.Rdata")
+```

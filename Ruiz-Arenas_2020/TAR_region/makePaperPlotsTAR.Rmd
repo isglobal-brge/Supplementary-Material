@@ -1,0 +1,289 @@
+---
+title: "Figure 5: Prepare plots for TAR region"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+This document contain the code to generate the plot for Figure 5 (TAR region).
+
+## Load libraries and data
+
+```{r}
+library(ggplot2)
+library(Gviz)
+library(GenomicRanges)
+library(VariantAnnotation)
+library(ggExtra)
+library(cowplot)
+
+load("results/models/recombClust_1000G_short.Rdata") ## recombClust results in 1000 Genomes
+load("results/models/recombClust_gtex_short.Rdata") ## recombClust results in GTEx
+load("results/models/1000G_R2s.Rdata") ## Correlation between TAR SNPs and recombClust clusters
+load("results/models/GTEX_GE_assocs_blood.Rdata") ## Association between RNAseq and recombClust clusters
+eQTLs <- read.delim("data/eqtls.txt", as.is = TRUE) ## Load eQTLs for gene ANKRD35 (PMID:24013639)
+```
+
+# Base track
+
+```{r}
+basetracks <- list(IdeogramTrack(genome = "hg19", chromosome = "chr1"), 
+                   Gviz::GenomeAxisTrack())
+```
+
+## Transcripts track
+
+```{r}
+data(dmrcatedata, envir = environment(), package = "DMRcatedata")
+txs <- subsetByOverlaps(tx.hg19, range)
+txs <-  subset(txs, gene_type == "protein_coding")
+
+genes <- Gviz::GeneRegionTrack(txs, name = "Transcripts", 
+                               symbol = txs$gene_name, 
+                               gene = txs$gene_name,
+                               fill = "lightblue",
+                               showId = TRUE, geneSymbol = TRUE, cex.title = 0.7,
+                               shape = "arrow", transcriptAnnotation = "symbol",
+                               collapseTranscripts = TRUE, rotation.title = 0)
+```
+
+## Segmental Duplications
+
+```{r}
+segDups <- UcscTrack(genome = "hg19", chromosome = "chr1", 
+                     track= "genomicSuperDups", from = 145350000, 
+                     to = 145750000, shape = "box",
+                     trackType="AnnotationTrack", 
+                     collapse = TRUE,
+                     stacking = "dense",
+                     start = "chromStart", end = "chromEnd", 
+                     strand = "strand", fill="#8282d2", 
+                     name = "UCSC Segmental Duplications")
+```
+
+
+## TAR region deletions
+
+```{r}
+delRegs <- GRanges(seqnames = "chr1",
+                   IRanges(start = c(145399075, 145504581),
+                           width = c(195139, 104592)))
+delTrack <- AnnotationTrack(delRegs, feature = c("Common", "Minimal"),
+                            fill = "lightgrey",
+                            featureAnnotation = "feature",  
+                            name = "TAR deletions")
+```
+
+
+# RecombClust tracks 
+
+## Define functions to compute recombClust recombination
+
+```{r}
+range <- GRanges("chr1:145350000-145750000")
+width <- 2e4
+starts <- seq(145350000, 145750000, width)
+chunks <- GRanges(seqnames = "chr1", IRanges(start = starts, width = width))
+
+getRecombProb <- function(classvec, class, models, overLaps){
+  
+  goodModels <- vapply(models, base::class, character(1)) == "list"
+  indsmat <- do.call(cbind, lapply(models[goodModels], `[[`, "r1"))
+  
+  ## Select cluster individuals
+  indsmat1 <- indsmat[classvec == class, ]
+  
+  vec <- rep(NA, queryLength(overLaps))
+  
+  ## Compute cluster Recomb freq by mean of voting
+  res <- sapply(unique(from(overLaps)), function(chunk){
+    
+    sel <- to(overLaps)[from(overLaps) == chunk]
+    mat <- indsmat1[, sel, drop = FALSE]
+    val <- mean(rowMeans(mat > 0.5) > 0.5)
+  })
+  vec[unique(from(overLaps))] <- res
+  vec
+}
+```
+
+## GTEx results
+
+```{r}
+g_class <- factor(gtex_res$class)
+
+models <- gtex_res$models
+allCoords <- data.frame(t(sapply(models, function(x) x$annot)))
+allCoords$chr <- "chr1"
+grMods <- makeGRangesFromDataFrame(allCoords)
+overGen <- countOverlaps(chunks, grMods)
+overGenall <- findOverlaps(chunks, grMods)
+
+clusProbsGtex <- lapply(as.character(1:2), getRecombProb, 
+                         classvec = as.character(g_class), models = models, 
+                         overLaps = overGenall)
+
+df <- data.frame(chr = "chr1", start = starts, end = starts + 3e4, 
+                 RhoAl1 = clusProbsGtex[[1]], RhoAl2 = clusProbsGtex[[2]])
+gtexGR <- makeGRangesFromDataFrame(df, keep.extra.columns = TRUE)
+gtexTrack <- DataTrack(gtexGR, type ="a", name = "GTEx\nRecomb proportion",
+                         groups = paste("Subpopulation", 1:2),
+                         col = c("red", "blue"),
+                         cex.title = 0.7)
+```
+
+### 1000 Genomes
+
+```{r}
+t_class <- kmeans(thousand_res$pc$x[, 2], centers = c(-5, 15))$cluster
+models <- thousand_res$models
+
+## Make overlaps with all models
+allCoords <- data.frame(t(sapply(models, function(x) x$annot)))
+allCoords$chr <- "chr1"
+grMods <- makeGRangesFromDataFrame(allCoords)
+overGen <- countOverlaps(chunks, grMods)
+overGenall <- findOverlaps(chunks, grMods)
+
+clusProbs1KG <- lapply(as.character(1:2), getRecombProb, 
+                       classvec = as.character(t_class), models = models, 
+                       overLaps = overGenall)
+
+df <- data.frame(chr = "chr1", start = starts, end = starts + 3e4, 
+                 RhoAl1 = clusProbs1KG[[1]], RhoAl2 = clusProbs1KG[[2]])
+thousandGR <- makeGRangesFromDataFrame(df, keep.extra.columns = TRUE)
+thousandTrack <- DataTrack(thousandGR, type ="a", name = "1000 Genomes\nRecomb proportion",
+                        groups = paste("Subpopulation", 1:2),
+                        col = c("red", "blue"),
+                        cex.title = 0.7)
+thousandGR$Diff <- thousandGR$RhoAl2 - thousandGR$RhoAl1
+thousandGRDifftrack <- DataTrack(thousandGR, type = "a", 
+                                 baseline = 0, 
+                                 data =  thousandGR$Diff, 
+                                 name = "Recombination\ndifference (SP2-SP1)", 
+                                 col = "black",
+                                 cex.title = 0.7)
+```
+
+## SNPs LD
+
+Correlation between TAR SNPs and recombClust clusters classification.
+
+```{r}
+GR1000G$gexp <- GR1000G$R2
+GR1000G$R2[names(GR1000G) %in% eQTLs$SNP] <- NA
+GR1000G$gexp[!names(GR1000G) %in% eQTLs$SNP] <- NA
+GR1000G$a <- GR1000G$R2
+GR1000G$a[names(GR1000G) != "rs72704264"] <- NA
+
+LDTrack <- DataTrack(GR1000G, type = "p", 
+                     col = c("grey70", "darkgreen", "red"),
+                     groups = c("All SNPs", "ANKRD35 eQTLs", "Diastolic blood pressure"),
+                     cex.axis = 0.7, 
+                     name = "Linkage Disequilibrium (r2)")
+
+
+```
+
+## Make plot
+
+```{r}
+png("./results/figures/Chr1_TAR_RegionGviz.png", width = 30, height = 25, units = 'cm', res = 300)
+plotTracks(c(basetracks, genes, segDups, delTrack, thousandTrack, 
+             thousandGRDifftrack,  gtexTrack, LDTrack), 
+           fontcolor.title = "black",
+           col.axis = "black",
+           from = start(range), to = end(range),
+           background.title = "grey90",
+           fontcolor.feature = "black")
+dev.off()
+```
+
+
+# recombClust PCAs
+
+## 1000 Genomes
+
+```{r}
+t_df <- data.frame(thousand_res$pc$x)
+t_df$class <- factor(t_class[rownames(t_df)])
+
+vars <- thousand_res$pc$sdev^2/sum(thousand_res$pc$sdev^2)
+t_mds <- ggplot(t_df, aes(x = PC1, y = PC2, color = class)) +
+  # Plot genotyped
+  geom_point() + 
+  ggtitle("1000 Genomes") + 
+  # Change colors
+  scale_color_manual(values = c("red", "blue"), 
+                    labels = c("Subpopulation 1", "Subpopulation 2"), 
+                    breaks = c("1", "2"), na.value = "black", 
+                    name="") +
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5),
+                     panel.grid.major = element_blank(), 
+                     panel.grid.minor = element_blank(),
+                     legend.position = "none") +
+  scale_x_continuous(name = paste(sprintf("PC1 (%.2f", vars[1]*100), "%)")) +
+  scale_y_continuous(name = paste(sprintf("PC2 (%.2f", vars[2]*100), "%)"))
+```
+
+## GTEx
+
+```{r}
+g_df <- data.frame(gtex_res$pc$x)
+g_df$class <- g_class[rownames(g_df)]
+g_df$class <- factor(g_df$class, levels = c("1", "2"))
+
+vars <- gtex_res$pc$sdev^2/sum(gtex_res$pc$sdev^2)
+
+g_mds <- ggplot(g_df, aes(x = PC1, y = PC2, color = class)) +
+  # Plot genotyped
+  geom_point() + 
+  ggtitle("GTEx") + 
+  # Change colors
+  scale_color_manual(values = c("red", "blue"), 
+                     labels = c("Subpopulation 1", "Subpopulation 2"), 
+                     breaks = c("1", "2"), na.value = "black", 
+                     name="") +
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5),
+                     panel.grid.major = element_blank(), 
+                     panel.grid.minor = element_blank()) +
+  scale_x_continuous(name = paste(sprintf("PC1 (%.2f", vars[1]*100), "%)")) +
+  scale_y_continuous(name = paste(sprintf("PC2 (%.2f", vars[2]*100), "%)"))
+```
+
+# recombClust cluster vs gene expression
+
+```{r}
+df_gene <- df_ANKRD35[df_ANKRD35$exp > -11, ]
+
+genosPops <- c("pop1/pop1", "pop1/pop2", "pop2/pop2")
+gexp <- ggplot(df_gene, aes(x = factor(genosPops[geno + 1]), y = exp, fill = factor(genosPops[geno + 1]))) + 
+  geom_violin() + geom_boxplot() + 
+  ggtitle("ANKRD35") + 
+  geom_text(x = 3, y = 2, label = "p-value = 6.6e-4", size = 3) +
+  scale_y_continuous(name = "logCPM") + 
+  scale_x_discrete(name = "Sample Genotype") +
+  scale_fill_manual(values = c("indianred1", "grey85", "steelblue3")) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "none") 
+```
+
+# Combined plot
+
+```{r}
+mds <- plot_grid(t_mds, g_mds, gexp, ncol = 3, rel_widths = c(3, 4.5, 3), 
+                 labels = c("A", "", "B"))
+
+p2 <- ggdraw() + draw_image("./results/figures/Chr1_TAR_RegionGviz.png")
+
+png("results/figures/TAR_region_comb.png", width = 3000, height = 3400, res = 300)
+plot_grid(mds, p2, labels = c("", "C"), ncol = 1, rel_heights = c(1, 3))
+dev.off()
+```

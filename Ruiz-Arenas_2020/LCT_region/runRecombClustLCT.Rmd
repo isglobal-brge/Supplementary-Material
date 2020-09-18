@@ -1,0 +1,88 @@
+---
+title: " Run recombClust in HumanPopScan regions in EUR 1000Genomes"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Summary
+
+Run recombClust in HumanPopScan regions in EUR 1000Genomes. One of this region is LCT region, which is included in the manuscript. SNPs with a MAF < 0.05 were removed.
+
+## Load libraries
+
+```{r}
+library(recombClust)
+library(GenomicRanges)
+library(VariantAnnotation)
+library(parallel)
+library(snpStats)
+library(BiocParallel)
+
+source("~/InversionNGSutils.R")
+```
+
+InversionNGSutils.R contains in-house scripts to load genotypes from VCF files using VariantAnnotation
+
+## Make list of regions to analyze
+
+Load ranges from PopHumanScan.
+
+```{r}
+fold <- "results/models/"
+vcfFold <- "~/PublicData/STUDY/1000GENOME/VCF/"
+
+HPSreg <- read.table("data/pophumanscanTable.tab", header = TRUE)
+HPSgr <- makeGRangesFromDataFrame(HPSreg, keep.extra.columns = TRUE)
+```
+
+Select ranges >= 100Kb, discard ranges in chrX and select 25 random regions.
+
+```{r}
+HPSgrsel <- HPSgr[width(HPSgr) >= 1e5]
+HPSgrsel <- HPSgrsel[seqnames(HPSgrsel) != "chrX"]
+set.seed(0)
+HPSgrsel <- HPSgrsel[sample(seq_len(length(HPSgrsel)), 25)]
+names(HPSgrsel) <- paste0("reg", seq_len(length(HPSgrsel)))
+seqlevelsStyle(HPSgrsel) <- "NCBI"
+```
+
+## Load ancestry
+
+```{r}
+load("data/Samples_Pop1GK.Rdata")
+EUR <- samp_pop$name[samp_pop$superpop == "EUR"]
+```
+
+## Run recombClust
+
+This code loads the genotype data from the selected regions and applies recombClust.
+
+```{r}
+getRCmods <- function(range){
+  message(names(range))
+  message("Loading VCF")
+  vcffile <- paste0(vcfFold, "ALL.chr", as.character(seqnames(range)), ".phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz")
+  vcfMat <- getVCFmatrixChr(range, EUR, vcffile = vcffile, minmaf = 0.05)
+  GRsnps <- makeGRangesFromDataFrame(vcfMat$map, start.field = "position", 
+                                     end.field = "position")
+  
+  if (ncol(vcfMat$genotypes) < 10){
+    message("The region does not contain enough polymorphic SNPs")
+    recomb <- NULL
+    save(range, recomb, file = paste0(fold, names(range), "recombRes.Rdata")) 
+    return(NULL)
+  }
+  
+  message("Running recombClust")
+  recomb <- runRecombClust(as(vcfMat$genotypes, "numeric")/2, 
+                            annot = GRsnps, BPPARAM = MulticoreParam(20))
+  
+  save(range, recomb, file = paste0(fold, names(range), "recombRes.Rdata")) 
+  NULL
+}
+lapply(names(HPSgrsel), function(x) getRCmods(HPSgrsel[x]))
+save(HPSgrsel, file = paste0(fold, "selRanges.Rdata"))
+```
