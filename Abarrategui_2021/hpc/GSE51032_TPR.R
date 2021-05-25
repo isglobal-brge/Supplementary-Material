@@ -12,25 +12,22 @@ object   <- eval(parse(text=variable))
 print(object)
 
 load("inputs/epi_validated.rda")
+methods = c("manova", "mlm", "mahdistmcd", "isoforest", "barbosa", "beta")
 
 #2. Filtering inputs
-case_samples <- object[,"GSM1235784"]
-control_samples <- object[,GSE51032$cancer_type == "free"]
-
-total_control_samples <- ncol(control_samples)
-samples_ncol <- sample.int(total_control_samples, size = n, replace = FALSE)
-control_samples <- control_samples[,samples_ncol] 
-methods = c("manova", "mlm", "mahdistmcd", "isoforest", "barbosa", "qn")
+control_samples  <- which(GSE51032$status == "control")
+case_samples <- GSE51032[,"GSM1235784"]
 
 #3. Simulation
 rst <- do.call(rbind, lapply(seq_len(length(methods)), function(j) {
-  rst_case <- do.call(rbind, lapply(seq_len(ncol(case_samples)), function(ii) {
-    epimutations(case_samples[,ii], 
-                 control_panel = control_samples, 
-                 method = methods[j], 
-                 chr = "chr17",
-                 start = 46000000,
-                 end = 46020000)
+  rst_case <- do.call(rbind, lapply(seq_len(ncol(case_samples)), function(ii){
+    samples_ncol <- sample(control_samples, size = n, replace = FALSE)
+    control_panel <- GSE51032[,samples_ncol]
+    epimutacions::epimutations(case_samples, control_panel,
+                               method = methods[j], 
+                               chr = "chr17",
+                               start = 46000000,
+                               end = 46020000)
     
   }))
 }))
@@ -60,15 +57,15 @@ if(is.null(rst)){
     results$percent100 <- ifelse(percentOverlap >= 1, 1, 0)
     results$percent <- percentOverlap
   
-  results <- results[,c(1:6, 13:16, 7:8, 17:21, 9:12)]
-  colnames(results)[c(7:10,13:17)]  <- c("chromosome_validated","start_validated","end_validated", "sz_validated", "25%", "50%", "75%", "100%", "%")
+    results <- results[,c(1:6, 16:24, 7:15)]
+    colnames(results)[c(7:15)] <- c("chromosome_validated","start_validated","end_validated", "sz_validated", "25%", "50%", "75%", "100%", "%")
   }else{
     results <- NA
   }
 }
 
 #4. Save the results
-output.filename <- paste0("outputs/outputfile-", variable,"-", n, "-", i, ".rda")
+output.filename <- paste0("outputs/outputfile-","TPR-", variable,"-", n, "-", i, ".rda")
 save(results, file=output.filename)
 print(paste0("Written to file '", output.filename, "'"))
 

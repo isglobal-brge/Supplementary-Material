@@ -18,66 +18,9 @@ load("inputs/names_GSE111629.rda")
 found <- which(colnames(GSE111629) %in% unique(names_GSE111629))
 GSE111629 <- GSE111629[,-found]
 
-control_samples <- GSE111629[,GSE111629$disease_state == "control"]
-case_samples <- GSE111629[,GSE111629$disease_state == "case"]
-
-case_samples <- case_samples[,-which(colnames(case_samples) == "GSM3035497")]
-
 #3. Functions
-##3.1. Simulation function
-simulations_FPR <- function(case_samples, control_samples, n = 100, methods = c("manova", "mlm", "mahdistmcd", "isoforest", "barbosa", "qn"), chr = NULL , start = NULL, end = NULL, epi_params = epimutacions::epi_parameters(),bump_cutoff = 0.1, min_cpg = 3,  verbose = TRUE){
-  
-  if(is.null(case_samples)){
-    stop("Please provide a valid 'case_samples'")
-  }
-  if(is.null(control_samples)){
-    stop("Please provide a valid 'control_samples'")
-  }
-  print(1)
-  #select "n" control samples randomly
-  total_control_samples <- ncol(control_samples)
-  samples_ncol <- sample.int(total_control_samples, size = n, replace = FALSE)
-  control_samples <- control_samples[,samples_ncol] 
-  #select case sample randomly
-  
-  #total_case_samples <- ncol(case_samples)
-  print(2)
-  samples_ncol <- sample.int(ncol(case_samples), size = 4, replace = FALSE)
-  case_samples <- case_samples[,samples_ncol] 
-  print(3)
-  print(colnames(case_samples))
-  print(colnames(control_samples))
-  rst <- do.call(rbind, lapply(seq_len(length(methods)), function(j) {
-    print(4)
-    rst_case <- do.call(rbind, lapply(seq_len(ncol(case_samples)), function(ii) {
-      print(5)
-      epimutacions::epimutations(case_samples[,ii], 
-                   control_panel = control_samples, 
-                   method = methods[j], 
-                   chr = chr, 
-                   start = start, 
-                   end = end,  
-                   epi_params = epi_params,
-                   min_cpg = min_cpg,
-                   bump_cutoff = bump_cutoff,
-                   verbose = verbose)
-      
-    }))
-  }))
-  if(is.null(rst)){
-    return(NA)
-  }
-  if(nrow(rst) == 0){
-    return(NA)
-  }else{
-    rst <- as.data.frame(rst)
-    gr_results <- GenomicRanges::makeGRangesFromDataFrame(rst)
-    library(GenomicRanges)
-    rst <- rst[gr_results %outside% gr_found,]
-    return(rst)
-  }
-}
-##3.2 Random region generation
+
+##3.1 Random region generation
 random_regions <- function(object, span = 20000, min_cpg = 3){
   my_chr <- paste0("chr",1:22)
   fd<- as.data.frame(SummarizedExperiment::rowRanges(object))
@@ -121,14 +64,39 @@ random_regions <- function(object, span = 20000, min_cpg = 3){
   return(regions)
 }
 
+##3.2. Simulation function
+simulations_FPR <- function(GSE111629, n = 100, methods = c("manova", "mlm", "mahdistmcd", "isoforest", "barbosa", "beta"), epi_params = epimutacions::epi_parameters(),bump_cutoff = 0.1, min_cpg = 3,  verbose = TRUE){
+  
+  #select "n" control samples randomly
+  control_samples  <- which(GSE111629$status == "control")
+  control_samples_ncol <- sample(control_samples, size = n, replace = FALSE)
+  control_panel  <- GSE111629[,control_samples_ncol] 
+  #select case sample randomly
+  
+  #total_case_samples <- ncol(case_samples)
+  case_samples <- which(GSE111629$status == "case")
+  case_samples_ncol <- sample(case_samples, size = 4, replace = FALSE)
+  case_samples <- GSE111629[,case_samples_ncol]
+  
+  regions <- random_regions(GSE111629[,c(colnames(control_samples), colnames(case_samples))], span = 20000, min_cpg = 3)
+  
+  rst <- do.call(rbind, lapply(seq_len(length(methods)), function(j) {
+      epimutacions::epimutations(case_samples, control_panel, 
+                                 method = methods[j],
+                                 chr = unique(regions[[1]][,"seqnames"]),
+                                 start = min(regions[[1]][,"start"]) - 10000,
+                                 end = max(regions[[1]][,"end"]) + 10000,  
+                                 epi_params = epi_params,
+                                 min_cpg = min_cpg,
+                                 bump_cutoff = bump_cutoff,
+                                 verbose = verbose)
+  }))
+  return(rst)
+  }
+
 #4. Simulation
-regions <- random_regions(GSE111629, span = 20000, min_cpg = 3)
-out <- simulations_FPR(case_samples, control_samples,
-                       n = n,
-                       chr = unique(regions[[1]][,"seqnames"]),
-                       start = min(regions[[1]][,"start"]) - 10000,
-                       end = max(regions[[1]][,"end"]) + 10000) 
+out <- simulations_FPR(GSE111629, n = n) 
 
 #5. Save the results
-output.filename <- paste0("outputs/outputfile-", variable,"-out-", n, "-", i, ".rda")
+output.filename <- paste0("outputs/outputfile-", "FPR-", variable,"-", n, "-", i, ".rda")
 save(out, file=output.filename)
