@@ -4,8 +4,8 @@ TPR <- function(file_name, epi_validated){
   load(paste0("result_files/1-Result_list/", file_name, ".rda"))
 #1.2. Set the parameters
   control_n <- seq(20, 100, 10)
+  methods <- c("manova", "mlm", "mahdistmcd", "isoforest", "barbosa", "beta")
 #1.3. Calculate TPR and accuracy
-methods <- c("manova", "mlm", "mahdistmcd", "isoforest", "barbosa", "beta")
 regions <-  do.call(list, lapply(seq(nrow(epi_validated)), function(i){
   TPR <- do.call(list, lapply(seq(length(result_table)), function(n){
     rst <-  do.call(rbind, lapply(seq_len(length(methods)), function(j){
@@ -38,7 +38,7 @@ regions <-  do.call(list, lapply(seq(nrow(epi_validated)), function(i){
 names(regions) <- paste0(epi_validated$seqnames, "_", epi_validated$start, "_", epi_validated$end)
 TPR <- regions
 #1.4. Save results
-save(TPR, file = paste0("result_files/2-TPR/TPR_", file_name, ".rda"))
+save(TPR, file = paste0("result_files/2-TPR_accuracy/", file_name, ".rda"))
 }
 
 # 2. Create TPR and accuracy tables 

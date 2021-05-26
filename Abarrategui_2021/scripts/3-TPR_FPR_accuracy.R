@@ -1,25 +1,15 @@
-load("result_files/TPR/TPR_GSE51032_in_chr.rda")
-load("result_files/FPR/FPR_GSE51032_out_chr.rda")
-final.dataset.name <- "GSE51032_chr"
-TPR <- as.data.frame(data.table::rbindlist(TPR))
-FPR <- df <- as.data.frame(data.table::rbindlist(FPR))
-df<- merge(TPR, FPR, by = c("method", "n"), sort = FALSE)
-save.dir <-"result_files/TPR_FPR_accuracy/" 
-save(df, file = paste0(save.dir, final.dataset.name, ".rda"))
+TPR_FPR_accuracy <- function(FPR_file_name, TPR_file_name, final_file_name){
+  load(paste0("result_files/2-TPR_accuracy/", TPR_file_name, ".rda"))
+  load(paste0("result_files/2-FPR/", FPR_file_name, ".rda"))
+  df <- do.call(list, lapply(seq_len(length(TPR)), function(i) {
+    TPR_n <- as.data.frame(data.table::rbindlist(TPR[[i]]))
+    FPR <- as.data.frame(data.table::rbindlist(FPR))
+    merge(TPR_n, FPR, by = c("method", "n"), sort = FALSE)
+  }))
+  names(df) <- names(TPR)
+  
+  save(df, file = paste0("result_files/3-TPR_FPR_accuracy/",final_file_name, ".rda"))
+}
 
-####################################################
-load("result_files/TPR/TPR_GSE111629_in_chr_start_end.rda")
-load("result_files/FPR/FPR_GSE111629_out_chr_start_end.rda")
-final.dataset.name <- "GSE111629_chr_start_end"
-
-df <- do.call(list, lapply(seq_len(length(TPR)), function(i) {
-  TPR_n <- as.data.frame(data.table::rbindlist(TPR[[i]]))
-  FPR <- as.data.frame(data.table::rbindlist(FPR))
-  merge(TPR_n, FPR, by = c("method", "n"), sort = FALSE)
-}))
-
-names(df) <- names(TPR)
-
-save.dir <-"result_files/TPR_FPR_accuracy/" 
-save(df, file = paste0(save.dir, final.dataset.name, ".rda"))
-rm(list = ls())
+TPR_FPR_accuracy("GSE111629-FPR", "GSE111629-TPR", "TPR_FPR_accuracy_GSE111629")
+TPR_FPR_accuracy("GSE51032-FPR", "GSE51032-TPR", "TPR_FPR_accuracy_GSE51032")
