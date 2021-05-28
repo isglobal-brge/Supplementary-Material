@@ -27,13 +27,13 @@ primary colorectal cancer and 20 other primary cancers. The GSE111629 cohort 335
 
 # Validation
 
-We evaluated the performance of the method using TPR (True Positive Rate), False Positive Rate (FPR) and accuracy. We use the TPR to measure the proportion of detected epivariations by the `epimutations` approach  present in the validated onces [@garg2020survey]. FPR to calculate the identified epimutations outside the once found in [@garg2020survey], whether validated or not. The accuracy measures the closeness of the detected epimutation to the validated regions. 
+We evaluated the performance of the method using TPR (True Positive Rate), False Positive Rate (FPR) and accuracy. We use the TPR to measure the proportion of detected epivariations by the `epimutations` approach  present in the validated [@garg2020survey]. FPR to calculate the identified epimutations outside the once found in [@garg2020survey], whether validated or not. The accuracy measures the closeness of the detected epimutation to the validated regions. 
 
-We select samples differently depending on the study group and measure to compute. Control samples were selected randomly using different sample size: 20, 30, 40, 50, 60, 70, 80, 90 and 100. However, case samples were selected considering validated epimutations  or excluding epivariations found [@garg2020survey].  
+We select samples differently depending on the study group and measure to compute. Control samples were selected randomly using different sample size: 20, 30, 40, 50, 60, 70, 80, 90 and 100. However, case samples were selected considering validated epimutations (for TPR and accuracy)  or excluding epivariations found (for FPR) [@garg2020survey].  
 
-The validated epimutations (table 1) were only present on 5 individuals: GSM1235784 from GSE51032 cohort and GSM3035933, GSM3035791, GSM3035807 and GSM3035685 from GSE111629. Therefore, they were established as case samples when computing TPR and accuracy. Nevertheless, we compute FPR excluding the samples containing at least one epimutation found by [@garg2020survey].  For the remaining case samples, 4 were selected randomly in each execution.
+The validated epimutations on table 1 were only present on 5 individuals: GSM1235784 from GSE51032 cohort and GSM3035933, GSM3035791, GSM3035807 and GSM3035685 from GSE111629. Therefore, they were established as case samples when computing TPR and accuracy. Nevertheless, we compute FPR excluding the samples containing at least one epimutation found by [@garg2020survey].  For the remaining case samples, 4 were selected randomly in each execution.
 
-We execute 100 times the same process for each control sample size. Also,  we define the regions selecting (1) entire chromosome and (2) 20 kb containing $\ge$ 3 GpGs. 
+We execute 100 times the same process for each control sample size. We define for the analysis regions of $\approx$ 20 kb containing $\ge$ 3 GpGs. 
 
 ```{r table_epi_validated, echo=FALSE}
 load("hpc/inputs/epi_validated.rda")
@@ -53,46 +53,49 @@ knitr::kable(epi_validated, format = "markdown", caption = "validated epimutatio
 
 We compare GSM1235784 case sample against randomly selected control samples from GSE51032 and GSM3035933, GSM3035791, GSM3035807 and GSM3035685 case samples against controls from GSE111629 specifying a region of 20 kb and $\ge$ 3 GpGs. 
 
-We obtained similar results in both cohorts. We observed that the methods manova, mahalanobis distance and multivariate linear models identified the validated epimutations with a TPR and accuracy $>99\%$. Isolation forest detected the epivariations with similar accuracy but with a lower TPR ($76\%$). These measures in barbosa method are  $87\%$  and $90\%$ respectively. Nonetheless, qn approach identified the validated epimutations in $100\%$ of the simulations but with very small accuracy ($0.04\%$), which means a huge difference in the region width between the validated epimutation and the identified one by our method.   
+We obtained similar results in both cohorts. We observed that the methods manova, mahalanobis distance and multivariate linear models identified the validated epimutations with a TPR of $>99\%$ even if the control sample is small. However,  the TPR in isolation forest increases together with the number of control samples obtaining a TPR $\ge$ 75 with 50 control samples or more. The TPR in barbosa and beta approaches for GSE51032 dataset is small ($<50\%$).  Nonetheless, for GSE111629 the TPR value increases considerably $>99\%$. Regarding to the accuracy, all the statistical  approaches detect the epivariants with $>80\%$ of closeness to the validated epimutations. 
 
-We detected possible epivariations outside the epimutations found by [@garg2020survey] selecting control and case samples randomly. For the analysis, we selected  regions of 20 kb and $\ge$ 3 GpGs. We compared each case sample  individually against control samples.  We observed that in both cohorts and for every approach  the FPR was $<0.01\%$. 
+We detected possible epivariations outside the epimutations found by [@garg2020survey] selecting control and case samples randomly. For the analysis, we selected  regions of 20 kb and $\ge$ 3 GpGs. We compared each case sample  individually against control samples.  We observed that in both cohorts and for every approach the FPR value is very small $<0.01\%$. 
 
 ```{r table_GSE51032, echo = FALSE}
-load("result_files/TPR_FPR_accuracy/GSE51032_chr_start_end.rda")
+load("result_files/3-TPR_FPR_accuracy/TPR_FPR_accuracy_GSE51032.rda")
+df <- df$chr17_46018653_46019185
 df[,3:5] <- apply(df[,c(-1, -2)], 2,as.numeric)
 mean_table <- aggregate(. ~ method, df[,c(-2)], mean)
 knitr::kable(mean_table, align = "lccrr", caption = "`epimutations` function TPR, FPR and accuracy using GSE51032 cohort.")
 ```
 
-```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/Graphic/GSE111629_chr5_10249760_10251253.png")
+
+
+```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png")
 ```
 
 
 ```{r table_GSE111629, echo = FALSE, results='asis'}
-load("result_files/TPR_FPR_accuracy/GSE111629_chr_start_end.rda")
+load("result_files/3-TPR_FPR_accuracy/TPR_FPR_accuracy_GSE111629.rda")
 df <- as.data.frame(data.table::rbindlist(df))
 df[,3:5] <- apply(df[,c(-1, -2)], 2,as.numeric)
 mean_table <- aggregate(. ~ method, df[,c(-2)], mean)
-knitr::kable(mean_table, align = "lccrr", caption = "`epimutations` function TPR, FPR and accuracy for GSE111629 cohort. The measures shown are the mean for all the validated epimutations idenfied")
+knitr::kable(mean_table, align = "lccrr", caption = "`epimutations` function TPR, FPR and accuracy for GSE111629 cohort. The measures shown are the mean for all the validated epimutations identified.")
 ```
 
 
 
 ```{r graph_GSE111629_1, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/Graphic/GSE111629_chr5_10249760_10251253.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png")
 ```
 
 ```{r graph_GSE111629_2, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:67583971-67584381", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/Graphic/GSE111629_chr5_67583971_67584381.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png")
 ```
 
 ```{r graph_GSE111629_3, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr17:46018653-46019185", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/Graphic/GSE111629_chr17_46018653_46019185.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png")
 ```
 
 ```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/Graphic/GSE111629_chr19_11199850_11200147.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png")
 ```
 
 \newpage
