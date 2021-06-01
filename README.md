@@ -1,6 +1,6 @@
 # Supplemental material of published manuscripts
 
-This directory contains scripts and files supporting publications from the BRGE lab.
+This directory contains scripts and files supporting publications from the BRGE lab. These include:
 
 **1. Ruiz-Arenas, Carlos et al., Genome Research, 2020** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Ruiz-Arenas_2020)
 
