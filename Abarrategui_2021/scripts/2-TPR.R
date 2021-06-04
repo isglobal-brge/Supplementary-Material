@@ -19,7 +19,7 @@ regions <-  do.call(list, lapply(seq(nrow(epi_validated)), function(i){
       }else if(methods[j] == "isoforest"){
         out <- out[out$outlier_score > 0.7,]
       }
-      if(length(unique(out$sz)) != 1){
+      if(i == 4){
         TPR <- nrow(out)/200
       }else{
       TPR <- nrow(out)/100
