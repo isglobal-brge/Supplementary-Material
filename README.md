@@ -15,4 +15,6 @@ This directory contains scripts and files supporting publications from the BRGE 
 
 **3. Pelegri-Siso, Dolors et al., 2021** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Pelegri-Siso_2021)
 >
-> 
+
+**4. Carreras-Gallo, Natalia et al., 2021** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Carreras-Gallo_2021)
+>
