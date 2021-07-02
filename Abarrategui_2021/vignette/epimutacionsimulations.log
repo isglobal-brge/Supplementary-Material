@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2021/W32TeX) (preloaded format=pdflatex 2021.6.7)  8 JUN 2021 14:39
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2021/W32TeX) (preloaded format=pdflatex 2021.6.7)  2 JUL 2021 15:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -562,24 +562,24 @@ File: l3backend-pdftex.def 2021-05-07 L3 backend support: PDF output (pdfTeX)
 ) (./epimutacionsimulations.aux)
 \openout1 = `epimutacionsimulations.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 99.
+LaTeX Font Info:    ... okay on input line 99.
 
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epsto
 pdf-base.sty
@@ -592,7 +592,7 @@ df-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-Package hyperref Info: Link coloring OFF on input line 91.
+Package hyperref Info: Link coloring OFF on input line 99.
 
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hyperref/nameref.s
 ty
@@ -608,9 +608,9 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
 \c@section@level=\count304
 )
-LaTeX Info: Redefining \ref on input line 91.
-LaTeX Info: Redefining \pageref on input line 91.
-LaTeX Info: Redefining \nameref on input line 91.
+LaTeX Info: Redefining \ref on input line 99.
+LaTeX Info: Redefining \pageref on input line 99.
+LaTeX Info: Redefining \nameref on input line 99.
 (./epimutacionsimulations.out) (./epimutacionsimulations.out)
 \@outlinefile=\write3
 \openout3 = `epimutacionsimulations.out'.
@@ -649,44 +649,44 @@ LaTeX Info: Redefining \nameref on input line 91.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 9
-3.
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 1
+01.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 9
-3.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 1
+01.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-93.
+101.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-93.
+101.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 93.
+(Font)              <12> on input line 101.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 93.
+(Font)              <8> on input line 101.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 93.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 93.
-
+(Font)              <6> on input line 101.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 101
+.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 93.
-
+LaTeX Font Info:    Trying to load font information for U+msb on input line 101
+.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
-10.
+18.
 (c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) [1
@@ -694,16 +694,149 @@ File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 {c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdfte
 x.map}]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 159.
+(Font)              <10> on input line 167.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 159.
+(Font)              <7> on input line 167.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 159.
+(Font)              <5> on input line 167.
+<C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignet
+te/fig/GSM1235784_chr17-46018654-46019184.png, id=41, 499.8675pt x 499.8675pt>
+File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/v
+ignette/fig/GSM1235784_chr17-46018654-46019184.png Graphic file (type png)
+<use C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vi
+gnette/fig/GSM1235784_chr17-46018654-46019184.png>
+Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
+/Abarrategui_2021/vignette/fig/GSM1235784_chr17-46018654-46019184.png  used on 
+input line 194.
+(pdftex.def)             Requested size: 499.88152pt x 499.88152pt.
 
-LaTeX Warning: Float too large for page by 143.5696pt on input line 340.
+Overfull \hbox (30.1265pt too wide) in paragraph at lines 194--195
+ [][] 
+ []
+
+[2]
+<C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignet
+te/fig/GSM3035685_chr19-11199851-11200146.png, id=48, 499.8675pt x 499.8675pt>
+File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/v
+ignette/fig/GSM3035685_chr19-11199851-11200146.png Graphic file (type png)
+<use C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vi
+gnette/fig/GSM3035685_chr19-11199851-11200146.png>
+Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
+/Abarrategui_2021/vignette/fig/GSM3035685_chr19-11199851-11200146.png  used on 
+input line 203.
+(pdftex.def)             Requested size: 499.88152pt x 499.88152pt.
+
+Overfull \hbox (30.1265pt too wide) in paragraph at lines 203--204
+ [][] 
+ []
+
+[3pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) 
+has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.209 
+       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
+/vignette/fig/GSM1235784_chr17-46018654-46019184.png>]
+<C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignet
+te/fig/GSM3035791_chr5-67584194-67584380.png, id=55, 499.8675pt x 499.8675pt>
+File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/v
+ignette/fig/GSM3035791_chr5-67584194-67584380.png Graphic file (type png)
+<use C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vi
+gnette/fig/GSM3035791_chr5-67584194-67584380.png>
+Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
+/Abarrategui_2021/vignette/fig/GSM3035791_chr5-67584194-67584380.png  used on i
+nput line 212.
+(pdftex.def)             Requested size: 499.88152pt x 499.88152pt.
+
+Overfull \hbox (30.1265pt too wide) in paragraph at lines 212--213
+ [][] 
+ []
+
+[4pdfTeX warning (ext4): destination with the same identifier (name{figure.2}) 
+has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.218 
+       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
+/vignette/fig/GSM3035685_chr19-11199851-11200146.png>]
+<C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignet
+te/fig/GSM3035791_chr17-46018654-46019184.png, id=62, 499.8675pt x 499.8675pt>
+File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/v
+ignette/fig/GSM3035791_chr17-46018654-46019184.png Graphic file (type png)
+<use C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vi
+gnette/fig/GSM3035791_chr17-46018654-46019184.png>
+Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
+/Abarrategui_2021/vignette/fig/GSM3035791_chr17-46018654-46019184.png  used on 
+input line 221.
+(pdftex.def)             Requested size: 499.88152pt x 499.88152pt.
+
+Overfull \hbox (30.1265pt too wide) in paragraph at lines 221--222
+ [][] 
+ []
+
+[5pdfTeX warning (ext4): destination with the same identifier (name{figure.3}) 
+has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.227 
+       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
+/vignette/fig/GSM3035791_chr5-67584194-67584380.png (PNG copy)>]
+<C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignet
+te/fig/GSM3035807_chr5-67583972-67584380.png, id=68, 499.8675pt x 499.8675pt>
+File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/v
+ignette/fig/GSM3035807_chr5-67583972-67584380.png Graphic file (type png)
+<use C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vi
+gnette/fig/GSM3035807_chr5-67583972-67584380.png>
+Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
+/Abarrategui_2021/vignette/fig/GSM3035807_chr5-67583972-67584380.png  used on i
+nput line 230.
+(pdftex.def)             Requested size: 499.88152pt x 499.88152pt.
+
+Overfull \hbox (30.1265pt too wide) in paragraph at lines 230--231
+ [][] 
+ []
+
+[6pdfTeX warning (ext4): destination with the same identifier (name{figure.4}) 
+has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.236 
+       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
+/vignette/fig/GSM3035791_chr17-46018654-46019184.png>]
+<C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignet
+te/fig/GSM3035933_chr5-10249761-10251252.png, id=75, 499.8675pt x 499.8675pt>
+File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/v
+ignette/fig/GSM3035933_chr5-10249761-10251252.png Graphic file (type png)
+<use C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vi
+gnette/fig/GSM3035933_chr5-10249761-10251252.png>
+Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
+/Abarrategui_2021/vignette/fig/GSM3035933_chr5-10249761-10251252.png  used on i
+nput line 239.
+(pdftex.def)             Requested size: 499.88152pt x 499.88152pt.
+
+Overfull \hbox (30.1265pt too wide) in paragraph at lines 239--240
+ [][] 
+ []
+
+[7pdfTeX warning (ext4): destination with the same identifier (name{figure.5}) 
+has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.245 
+       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
+/vignette/fig/GSM3035807_chr5-67583972-67584380.png>] [8pdfTeX warning (ext4): 
+destination with the same identifier (name{figure.6}) has been already used, du
+plicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.264 
+       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
+/vignette/fig/GSM3035933_chr5-10249761-10251252.png (PNG copy)>]
+
+LaTeX Warning: Float too large for page by 143.5696pt on input line 405.
 
 <C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result
-_files/4-Graph/GSE51032_chr17_46018653_46019185.png, id=41, 485.4135pt x 485.41
+_files/4-Graph/GSE51032_chr17_46018653_46019185.png, id=91, 485.4135pt x 485.41
 35pt>
 File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/r
 esult_files/4-Graph/GSE51032_chr17_46018653_46019185.png Graphic file (type png
@@ -712,20 +845,26 @@ esult_files/4-Graph/GSE51032_chr17_46018653_46019185.png Graphic file (type png
 sult_files/4-Graph/GSE51032_chr17_46018653_46019185.png>
 Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
 /Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png  us
-ed on input line 344.
+ed on input line 409.
 (pdftex.def)             Requested size: 485.41231pt x 485.41231pt.
 
-Overfull \hbox (15.65729pt too wide) in paragraph at lines 344--345
+Overfull \hbox (15.65729pt too wide) in paragraph at lines 409--410
  [][] 
  []
 
-[2] [3]
 
-LaTeX Warning: Float too large for page by 143.5696pt on input line 484.
+LaTeX Warning: Float too large for page by 143.5696pt on input line 549.
 
+[9pdfTeX warning (ext4): destination with the same identifier (name{figure.7}) 
+has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.549 \end{table}
+                  <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarr
+ategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png>] [10]
 <C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result
-_files/4-Graph/GSE111629_chr5_10249760_10251253.png, id=56, 485.4135pt x 485.41
-35pt>
+_files/4-Graph/GSE111629_chr5_10249760_10251253.png, id=103, 485.4135pt x 485.4
+135pt>
 File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/r
 esult_files/4-Graph/GSE111629_chr5_10249760_10251253.png Graphic file (type png
 )
@@ -733,23 +872,16 @@ esult_files/4-Graph/GSE111629_chr5_10249760_10251253.png Graphic file (type png
 sult_files/4-Graph/GSE111629_chr5_10249760_10251253.png>
 Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
 /Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png  us
-ed on input line 488.
+ed on input line 553.
 (pdftex.def)             Requested size: 485.41231pt x 485.41231pt.
 
-Overfull \hbox (15.65729pt too wide) in paragraph at lines 488--489
+Overfull \hbox (15.65729pt too wide) in paragraph at lines 553--554
  [][] 
  []
 
-[4pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) 
-has been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.494 
-       <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021
-/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png>] [5]
 <C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result
-_files/4-Graph/GSE111629_chr5_67583971_67584381.png, id=67, 485.4135pt x 485.41
-35pt>
+_files/4-Graph/GSE111629_chr5_67583971_67584381.png, id=104, 485.4135pt x 485.4
+135pt>
 File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/r
 esult_files/4-Graph/GSE111629_chr5_67583971_67584381.png Graphic file (type png
 )
@@ -757,16 +889,16 @@ esult_files/4-Graph/GSE111629_chr5_67583971_67584381.png Graphic file (type png
 sult_files/4-Graph/GSE111629_chr5_67583971_67584381.png>
 Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
 /Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png  us
-ed on input line 497.
+ed on input line 562.
 (pdftex.def)             Requested size: 485.41231pt x 485.41231pt.
 
-Overfull \hbox (15.65729pt too wide) in paragraph at lines 497--498
+Overfull \hbox (15.65729pt too wide) in paragraph at lines 562--563
  [][] 
  []
 
 <C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result
-_files/4-Graph/GSE111629_chr17_46018653_46019185.png, id=68, 485.4135pt x 485.4
-135pt>
+_files/4-Graph/GSE111629_chr17_46018653_46019185.png, id=105, 485.4135pt x 485.
+4135pt>
 File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/r
 esult_files/4-Graph/GSE111629_chr17_46018653_46019185.png Graphic file (type pn
 g)
@@ -774,16 +906,16 @@ g)
 sult_files/4-Graph/GSE111629_chr17_46018653_46019185.png>
 Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
 /Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png  u
-sed on input line 506.
+sed on input line 571.
 (pdftex.def)             Requested size: 485.41231pt x 485.41231pt.
 
-Overfull \hbox (15.65729pt too wide) in paragraph at lines 506--507
+Overfull \hbox (15.65729pt too wide) in paragraph at lines 571--572
  [][] 
  []
 
 <C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result
-_files/4-Graph/GSE111629_chr19_11199850_11200147.png, id=69, 485.4135pt x 485.4
-135pt>
+_files/4-Graph/GSE111629_chr19_11199850_11200147.png, id=106, 485.4135pt x 485.
+4135pt>
 File: C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/r
 esult_files/4-Graph/GSE111629_chr19_11199850_11200147.png Graphic file (type pn
 g)
@@ -791,54 +923,54 @@ g)
 sult_files/4-Graph/GSE111629_chr19_11199850_11200147.png>
 Package pdftex.def Info: C:/Users/nla94/Documents/GitHub/Supplementary-Material
 /Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png  u
-sed on input line 515.
+sed on input line 580.
 (pdftex.def)             Requested size: 485.41231pt x 485.41231pt.
 
-Overfull \hbox (15.65729pt too wide) in paragraph at lines 515--516
+Overfull \hbox (15.65729pt too wide) in paragraph at lines 580--581
  [][] 
  []
 
-[6pdfTeX warning (ext4): destination with the same identifier (name{figure.2}) 
-has been already used, duplicate ignored
+[11pdfTeX warning (ext4): destination with the same identifier (name{figure.8})
+ has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.522 \newpage
+l.587 \newpage
                <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrate
-gui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png>] [7pdfTeX w
-arning (ext4): destination with the same identifier (name{figure.3}) has been a
-lready used, duplicate ignored
+gui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png>] [12] [13pd
+fTeX warning (ext4): destination with the same identifier (name{figure.9}) has 
+been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.522 \newpage
+l.587 \newpage
                <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrate
-gui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png>] [8pdfTeX w
-arning (ext4): destination with the same identifier (name{figure.4}) has been a
-lready used, duplicate ignored
+gui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png>] [14pdfTeX 
+warning (ext4): destination with the same identifier (name{figure.10}) has been
+ already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.522 \newpage
+l.587 \newpage
                <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrate
-gui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png>] [9pdfTeX 
-warning (ext4): destination with the same identifier (name{figure.5}) has been 
-already used, duplicate ignored
+gui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png>] [15pdfTeX
+ warning (ext4): destination with the same identifier (name{figure.11}) has bee
+n already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.522 \newpage
+l.587 \newpage
                <c:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrate
-gui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png>] [10] (./e
+gui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png>] [16] (./e
 pimutacionsimulations.aux)
 Package rerunfilecheck Info: File `epimutacionsimulations.out' has not changed.
 
 (rerunfilecheck)             Checksum: 4BCF996A55E68088907969B44FFC4EAC;493.
  ) 
 Here is how much of TeX's memory you used:
- 12081 strings out of 480496
- 183663 string characters out of 5897654
- 522557 words of memory out of 5000000
- 29487 multiletter control sequences out of 15000+600000
+ 12167 strings out of 480496
+ 191839 string characters out of 5897654
+ 537942 words of memory out of 5000000
+ 29554 multiletter control sequences out of 15000+600000
  450405 words of font info for 67 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 60i,10n,66p,343b,330s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 60i,10n,66p,343b,359s stack positions out of 5000i,500n,10000p,200000b,80000s
 {c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.e
 nc}{c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.
 enc}{c:/Users/nla94/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ma
@@ -853,10 +985,10 @@ xmf-dist/fonts/type1/public/lm/lmr17.pfb><c:/Users/nla94/AppData/Roaming/TinyTe
 X/texmf-dist/fonts/type1/public/lm/lmri10.pfb><c:/Users/nla94/AppData/Roaming/T
 inyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb><c:/Users/nla94/AppData/Roam
 ing/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb>
-Output written on epimutacionsimulations.pdf (10 pages, 401283 bytes).
+Output written on epimutacionsimulations.pdf (16 pages, 873030 bytes).
 PDF statistics:
- 159 PDF objects out of 1000 (max. 8388607)
- 116 compressed objects within 2 object streams
- 30 named destinations out of 1000 (max. 500000)
- 66 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 204 PDF objects out of 1000 (max. 8388607)
+ 145 compressed objects within 2 object streams
+ 42 named destinations out of 1000 (max. 500000)
+ 96 words of extra memory for PDF output out of 10000 (max. 10000000)
 
