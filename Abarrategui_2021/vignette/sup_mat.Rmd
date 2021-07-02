@@ -1,15 +1,18 @@
 ---
 title: "a Bioconductor package to identify outliers in rare diseases DNA methylation data"
-subtitle: "Supplementary material"
-author:
-  - Leire Abarrategui
-  - Carlos Ruiz-Arenas
-  - Carles Hernandez-Ferrer
-  - Juan R. Gonzalez
-  - Patricia Ryser-Welch
+author: "Leire Abarrategui, Carlos Ruiz-Arenas, Carles Hernandez-Ferrer, Juan R. Gonzalez, Patricia Ryser-Welch"
 date: "`r Sys.Date()`"
-output: pdf_document
-
+header-includes:
+   - \usepackage{float}
+output:
+  pdf_document: 
+    latex_engine: xelatex
+    
+subtitle: "Supplementary material" 
+vignette: >
+  %\VignetteIndexEntry{Detection of epimutations with state of the art methods in methylation data} 
+  %\VignetteEngine{knitr::rmarkdown} 
+  %\VignetteEncoding{UTF-8}
 bibliography: refs.bib
 ---
 
@@ -49,7 +52,7 @@ In the first case, normalization through `epi_preprocess()` function is highly r
 Finally, these datasets are used as an input of  `epimutations()` function. It should be mentioned that  case samples and reference panel are introduced separately. 
 
 ```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and input types", out.width = '90%', fig.align='center'}
-knitr::include_graphics("fig/workflow.png")
+#knitr::include_graphics("fig/workflow.png")
 ```
 
 ## Candidate regions
@@ -358,33 +361,32 @@ epi_validated$samples <- c("GSM1235784/GSM3035791",
                            "GSM3035791/GSM3035807")
 colnames(epi_validated) <- c("Chromosome", "Start", "End", 	"Width", "Strand", "Samples")
 knitr::kable(epi_validated, format = "markdown", caption = "validated epimutations (Garg et al. 2020).")
-
 ```
 
 Additionally, we have plotted the methylation values of the samples in the regions where the validated epimutations were found.
  
 ```{r graph_GSM1235784, echo = FALSE, fig.cap = "GSE51032 samples in the region chr17:46018654-46019184", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM1235784_chr17-46018654-46019184.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM1235784_chr17-46018654-46019184.png")
 ``` 
 
 ```{r graph_GSM3035685, echo = FALSE, fig.cap = "GSE111629 samples in the region chr19:11199851-11200146", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035685_chr19-11199851-11200146.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035685_chr19-11199851-11200146.png")
 ``` 
 
 ```{r graph_GSM3035791, echo = FALSE, fig.cap = "GSE111629 samples in the region chr5:67584194-67584380", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035791_chr5-67584194-67584380.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035791_chr5-67584194-67584380.png")
 ``` 
 
 ```{r graph_GSM3035791.2, echo = FALSE, fig.cap = "GSE111629 samples in the region chr17:46018654-46019184", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035791_chr17-46018654-46019184.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035791_chr17-46018654-46019184.png")
 ``` 
 
 ```{r graph_GSM3035807, echo = FALSE, fig.cap = "GSE111629 samples in the region chr5:67583972-67584380", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035807_chr5-67583972-67584380.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035807_chr5-67583972-67584380.png")
 ``` 
 
 ```{r graph_GSM3035933, echo = FALSE, fig.cap = "GSE111629 samples in the region chr5:10249761-10251252", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035933_chr5-10249761-10251252.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035933_chr5-10249761-10251252.png")
 ``` 
 ## Results
 
@@ -411,7 +413,7 @@ kableExtra::kbl(df[,-2], align = 'c') %>%
 
 
 ```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png")
 ```
 
 ```{r table_GSE111629, echo = FALSE, results='asis'}
@@ -429,19 +431,19 @@ kableExtra::kbl(mean_table, align = 'c') %>%
 ```
 
 ```{r graph_GSE111629_1, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png")
 ```
 
 ```{r graph_GSE111629_2, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:67583971-67584381", fig.align='center'}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png")
 ```
 
 ```{r graph_GSE111629_3, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr17:46018653-46019185", fig.align='center'}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png")
 ```
 
 ```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center'}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png")
+knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png")
 ```
 
 \newpage
