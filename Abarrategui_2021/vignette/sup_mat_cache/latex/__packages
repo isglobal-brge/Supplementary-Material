@@ -20,3 +20,5 @@ IlluminaHumanMethylationEPICanno.ilm10b2.hg19
 knitr
 rtracklayer
 dplyr
+BSgenome
+BSgenome.Hsapiens.UCSC.hg19

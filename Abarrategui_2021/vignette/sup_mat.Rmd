@@ -24,12 +24,10 @@ knitr::opts_chunk$set(comment="", warning = FALSE, message = FALSE, cache = TRUE
 
 ## Background
 
-Rare diseases are pathologies with a low prevalence (< 1 per 2,000 people). Most of these pathologies have an onset during childhood and a strong genetic etiology. Consequently, rare disease diagnosis has relied on identifying genetic and genomic mutations that can cause the disease. Although these variants have provided a diagnosis for many patients and families, around 60% of the cases remained undiagnosed [@lionel2018improved]. Aberrant methylation can be an underlying cause of undiagnosed patients, either as a primary event (a.k.a. epimutation) or as a functional consequence of chromatin dysregulation by genetic or environmental agents (a.k.a. episignature). Epimutations are the cause of some rare diseases, such as Prader-Willi, Angelman or Beckwith-Wiedemann syndromes [@aref2019] and some human malformations [@serra2015dna]. Syndrome-specific episignatures are increasingly defined as biomarkers for a growing number of disorders [@aref2019]. Therefore, tools to detect epimutations and episignatures should be made available to the rare disease community and included in standardized analysis workflows.
+Rare diseases are pathologies with a low prevalence (< 1 per 2,000 people) [@EU_RD]. Most of these pathologies have an onset during childhood and a strong genetic etiology [@lopez2016social]. Consequently, rare disease diagnosis has relied on identifying genetic and genomic mutations that can cause the disease [@aref2019]. Although these variants have provided a diagnosis for many patients and families, around 60% of the cases remained undiagnosed [@lionel2018improved]. Aberrant methylation can be an underlying cause of undiagnosed patients, either as a primary event (a.k.a. epimutation) or as a functional consequence of chromatin dysregulation by genetic or environmental agents (a.k.a. episignature)  [@aref2019]. Epimutations are the cause of some rare diseases, such as Prader-Willi, Angelman or Beckwith-Wiedemann syndromes [@aref2019] and some human malformations [@serra2015dna]. Syndrome-specific episignatures are increasingly defined as biomarkers for a growing number of disorders [@aref2019; @garg2020survey]. Therefore, tools to detect epimutations and episignatures should be made available to the rare disease community and included in standardized analysis workflows.
 
 
-The package `epimutacions ` provides tools for analysing epivariants using multiple outlier detection  approaches. In addition, functions to plot and annotate 
-the identified epimutations. The full `epimutacions ` user´s guide is available in this vignette. 
-The main function to estimate the epivariants is called `epimutations()`. 
+This manual describes the `epimutacions` package tools to identify epivariants using multiple outlier detection  approaches. Also,  includes functions to plot and annotate the epimutations. The full `epimutacions ` user´s guide is available in this vignette. 
 
 The name of the package is `epimutacions` (pronounced `ɛ pi mu ta 'sj ons`) which means epimutations in Catalan, a language from the northeast of Spain.
 
@@ -43,17 +41,43 @@ The identification of relevant genomic methylation regions for a given sample ha
 
 The package allows two different types of inputs: 
 
- * (1) `IDAT` files containing the case samples and `RGChannelSet` object as reference panel. The reference panel can be supplied by the user or can be selected through the example datasets that the package provides. 
+ * (1) Case samples `IDAT` files (raw microarray intensities) together with `RGChannelSet` class object as reference panel. The reference panel can be supplied by the user or can be selected through the example datasets that the package provides. 
  
-* (2) `GenomicRatioSet` object containing case and control samples.  
+* (2) `GenomicRatioSet` class object containing case and control samples. 
 
-In the first case, normalization through `epi_preprocess()` function is highly recommended. In order to remove the unwanted variation caused by the batch effect when combining data from different sources. As a result, `GenomicRatioSet` object will be obtained.  
+The input data should contain information about \beta values of CpG sites, phenotype and feature data. 
 
-Finally, these datasets are used as an input of  `epimutations()` function. It should be mentioned that  case samples and reference panel are introduced separately. 
+Normalization through `epi_preprocess()` function is highly recommended when  combining data from different sources.  In order to remove the unwanted variation caused by the batch effect when combining data from different sources.   
+
+Finally, a `GenomicRatioSet` class object should be the input of the main function,  `epimutations()` function. Case samples and reference panel are introduced separately. 
 
 ```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and input types", out.width = '90%', fig.align='center'}
-#knitr::include_graphics("fig/workflow.png")
+knitr::include_graphics(file.path(getwd(),"vignette/fig/workflow.png"))
 ```
+
+
+
+# Getting started
+
+The `epimutacions` package is installed by executing: 
+```{r, eval=FALSE}
+install_github("isglobal-brge/epimutacions")
+```
+
+The package is it loaded in R as usual:
+
+```{r, message=FALSE}
+library(epimutacions)
+```
+
+The document has the following dependencies: 
+
+```{r, eval=FALSE}
+library(Knitr)
+library(kableExtra)
+```
+
+# Datasets
 
 ## Candidate regions
 
@@ -65,35 +89,13 @@ To define the candidate epimutations, we relied on the clustering from bumphunte
 
 In addition, we converted the candidate region from hg19 to hg38 coordinates, using NCBI remap. We selected regions that mapped to one region in hg38 with the same length. This yielded a total of 39944, the 98.85% of total hg19 regions. After converting to hg38, we can use these ranges to be annotated to ENCODE cREs. Overall, we mapped 30163 candidate regions to cREs, representing 74.65% of total candidate regions. 
 
-```{r, message=FALSE, echo = FALSE}
-library(epimutacions)
-```
 
 ```{r}
 data("candRegsGR")
 candRegsGR
 ```
 
-# Setup
-
-## Installing the package
-
-```{r, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("epimutacions")
-```
-
-
-## Loading libraries
-
-```{r, message=FALSE}
-library(epimutacions)
-```
-
-## Preparing dataset
-
+## GenomicRatioSet
 
 The package includes a small `GenomicRatioSet` class dataset (`methy` `r data("methy", package = "epimutacions")`) containing the DNA methylation profiles from a total of  `r ncol(methy)` individuals, `r ncol(methy[,methy$status == "case"])` cases and `r ncol(methy[,methy$status == "control"])` controls. The DNA methylation profiles were generated using the Illumina 450k Human Methylation BeadChip. The data were obtained from [Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/) and adapted for the package usage. 
 
@@ -143,26 +145,28 @@ In addition, the unique parameters for each normalization approach are defined t
 +----------+-----------------------+-----------------------------------------------------------------------------+
 | Method   |Parameters             |Description                                                                  |
 +==========+=======================+=============================================================================+
-|`illumina`|`bg.correct`<br>       |Performs background correction<br>                                           |
-|          |`normalize`<br>        |Performs controls normalization<br>                                          |        
+|`illumina`|`bg.correct`\          |Performs background correction\                                              |
+|          |`normalize`\           |Performs controls normalization\                                             |        
 |          |`reference`            |The reference array for control normalization                                |
 +----------+-----------------------+-----------------------------------------------------------------------------+
-|`quantile`|`fixOutliers`<br>      | Low outlier Meth and Unmeth signals will be fixed<br>                       |                       
-|          |`removeBadSamples`<br> | Remove bad samples<br>                                                      |
-|          |`badSampleCutoff`<br>  | The cutoff to label samples as 'bad'<br>                                    |
-|          |`quantileNormalize`<br>| Performs quantile normalization<br>                                         |
-|          | `stratified`          | performs quantile normalization within region strata<br>                    |
-|          |`mergeManifest`<br>    | Merged to the output the information in the associated manifest package<br> |
+|`quantile`|`fixOutliers`\         | Low outlier Meth and Unmeth signals will be fixed\                          |                       
+|          |`removeBadSamples`\    | Remove bad samples\                                                         |
+|          |`badSampleCutoff`\     | The cutoff to label samples as 'bad'\                                       |
+|          |`quantileNormalize`\   | Performs quantile normalization\                                            |
+|          | `stratified`          | Performs quantile normalization within region strata\                       |
+|          |`mergeManifest`\       | Merged to the output the information in the associated manifest package\    |
+|          | \                     |                                                                             |
 |          |`sex`                  | Sex of the samples                                                          |
 +----------+-----------------------+-----------------------------------------------------------------------------+
-|`noob`    | `offset`<br>          | Offset for the normexp background correct<br>                               |
-|          | `dyeCorr`<br>         | Performs dye normalization<br>                                              |  
+|`noob`    | `offset`\             | Offset for the normexp background correct\                                  |
+|          | `dyeCorr`\            | Performs dye normalization\                                                 |  
 |          | `dyeMethod`           | Dye bias correction to be done                                              |
 +---------------+------------------+-----------------------------------------------------------------------------+
-|`funnorm` | `nPCs `<br>           | The number of principal components from the control probes<br>              |       
-|          | `sex`<br>             | Sex of the samples<br>                                                      |      
-|          | `bgCorr`<br>          | Performs NOOB background correction prior to functional normalization<br>   |
-|          | `dyeCorr`<br>         | Performs dye normalization<br>                                              |
+|`funnorm` | `nPCs `\              | The number of principal components from the control probes\                 |       
+|          | `sex`\                | Sex of the samples\                                                         |      
+|          | `bgCorr`\             | Performs NOOB background correction prior to functional normalization\      |
+|          | \                     |                                                                             |
+|          | `dyeCorr`\            | Performs dye normalization\                                                 |
 |          | `keepCN`              | Keeps copy number estimates                                                 |
 +---------------+-----------------------------+------------------------------------------------------------------+
 
@@ -211,19 +215,20 @@ The `epi_parameters()` function  is  useful to set the individual parameters for
 +---------------+-----------------------------+----------------------------------------------------------------------+
 | Method        | Parameter                   | Description                                                          |
 +===============+=============================+======================================================================+
-| `manova`<br>  | `pvalue_cutoff`             | The threshold p-value to select which CpG regions are outliers       |
-|  `mlm`<br>    |                             |                                                                      |
+| `manova`\     | `pvalue_cutoff`             | The threshold p-value to select which CpG regions are outliers       |
+|  `mlm`\       |                             |                                                                      |
 |  `beta`       |                             |                                                                      |
 +---------------+-----------------------------+----------------------------------------------------------------------+
-| `iso.forest`  | `outlier_score_cutoff`<br>  | The threshold to select which CpG regions are outliers<br>           |
+| `iso.forest`  | `outlier_score_cutoff`\     | The threshold to select which CpG regions are outliers\              |
 |               | `ntrees`                    | The number of binary trees to build for the model                    |
 +---------------+-----------------------------+----------------------------------------------------------------------+
 |`mahdist.mcd`  | `nsamp`                     | The number of subsets used for initial estimates in the MCD          |
 +---------------+-----------------------------+----------------------------------------------------------------------+
-|  `barbosa`    |`window_sz`<br>              |The maximum distance between CpGs to be considered in the same DMR<br>|                
+|  `barbosa`    |`window_sz`\                 |The maximum distance between CpGs to be considered in the same DMR\   |                
+|               | \                           |                                                                      |
 |               |`offset_mean`/`offset_abs`   | The upper and lower threshold to consider a CpG an outlier           |
 +---------------+-----------------------------+----------------------------------------------------------------------+
-| `beta`        | `pvalue_cutoff`<br>         | The minimum p-value to consider a CpG an outlier<br>                 |
+| `beta`        | `pvalue_cutoff`\            | The minimum p-value to consider a CpG an outlier\                    |
 |               | `diff_threshold`            | The minimum methylation difference between the CpG and the           |
 |               |                             |  mean methylation to consider a position an outlier                  |
 +---------------+-----------------------------+----------------------------------------------------------------------+
@@ -250,7 +255,7 @@ The `epimutations` function returns a tibble containing all the epivariants iden
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 | Column name           | Description                                                                                                           |
 +=======================+=======================================================================================================================+
-| `epi_id`              | systematic name for each epimutation identified                                                                       |
+| `epi_id`              | Systematic name for each epimutation identified                                                                       |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 | `sample`              | The name of the sample containing that epimutation                                                                    |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
@@ -264,22 +269,22 @@ The `epimutations` function returns a tibble containing all the epivariants iden
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 | `cpg_n`               | The names of CpGs in the epimutation                                                                                  |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
-| `outlier_score`       | For method `manova` it provides the approximation to F-test and the Pillai score, separated by `/`<br>                |
-|                       | For method `mlm` it provides the approximation to F-test and the R2 of the model, separated by `/`<br>                |
-|                       | For method `isoforest` it provides the magnitude of the outlier score.<br>                                            |
-|                       | For method `beta` it provides the mean p-value of all GpGs in that DMR<br>                                            |
+| `outlier_score`       | For method `manova` it provides the approximation to F-test and the Pillai score, separated by `/`\                   |
+|                       | For method `mlm` it provides the approximation to F-test and the R2 of the model, separated by `/`\                   |
+|                       | For method `isoforest` it provides the magnitude of the outlier score.\                                               |
+|                       | For method `beta` it provides the mean p-value of all GpGs in that DMR\                                               |
 |                       | For methods `barbosa` and `mahdistmcd` it is filled with `NA`.                                                        |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
-| `pvalue`              | For methods `manova` and  `mlm` it provides the p-value obtained from the model.<br>                                  |
+| `pvalue`              | For methods `manova` and  `mlm` it provides the p-value obtained from the model.\                                     |
 |                       | For method `barbosa`, `isoforest`, `beta` and `mahdistmcd` it is filled with `NA`.                                    |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+ 
-| `outlier_direction`   | Indicates the direction of the outlier with "hypomethylation" and "hypermethylation".<br>                             | 
-|                       | For `manova`, `mlm`, `isoforest`, and `mahdistmcd` it is computed from the values obtained from `bumphunter`.<br>     |
-|                       | For `beta` is computed from the p value for each CpG using `diff_threshold` and `pvalue_threshold` arguments.<br>     |
+|`outlier_direction`    |    Indicates the direction of the outlier with "hypomethylation" and "hypermethylation".\                             | 
+|                       | For `manova`, `mlm`, `isoforest`, and `mahdistmcd` it is computed from the values obtained from `bumphunter`.\        |
+|                       | For `beta` is computed from the p value for each CpG using `diff_threshold` and `pvalue_threshold` arguments.\        |
 |                       | For `barbosa` it is computed from the location of the sample in the reference distribution (left vs. right outlier).  |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 | `adj_pvalue`          | For methods `manova` and  `mlm` it provides the adjusted p-value with                                                 |
-|                       | Benjamini-Hochberg based on the total number of regions detected by Bumphunter.<br>                                   |
+|                       | Benjamini-Hochberg based on the total number of regions detected by Bumphunter.     \                                 |
 |                       | For method `barbosa`, `isoforest`, `mahdistmcd` and `beta` it is filled with `NA`.                                    |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+ 
 | `epi_region_id`       | Name of the epimutation region as defined in `candRegsGR`.                                                            |
@@ -366,27 +371,28 @@ knitr::kable(epi_validated, format = "markdown", caption = "validated epimutatio
 Additionally, we have plotted the methylation values of the samples in the regions where the validated epimutations were found.
  
 ```{r graph_GSM1235784, echo = FALSE, fig.cap = "GSE51032 samples in the region chr17:46018654-46019184", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM1235784_chr17-46018654-46019184.png")
+getwd()
+knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM1235784_chr17-46018654-46019184.png"))
 ``` 
 
 ```{r graph_GSM3035685, echo = FALSE, fig.cap = "GSE111629 samples in the region chr19:11199851-11200146", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035685_chr19-11199851-11200146.png")
+knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035685_chr19-11199851-11200146.png"))
 ``` 
 
 ```{r graph_GSM3035791, echo = FALSE, fig.cap = "GSE111629 samples in the region chr5:67584194-67584380", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035791_chr5-67584194-67584380.png")
+knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035791_chr5-67584194-67584380.png"))
 ``` 
 
 ```{r graph_GSM3035791.2, echo = FALSE, fig.cap = "GSE111629 samples in the region chr17:46018654-46019184", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035791_chr17-46018654-46019184.png")
+knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035791_chr17-46018654-46019184.png"))
 ``` 
 
 ```{r graph_GSM3035807, echo = FALSE, fig.cap = "GSE111629 samples in the region chr5:67583972-67584380", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035807_chr5-67583972-67584380.png")
+knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035807_chr5-67583972-67584380.png"))
 ``` 
 
 ```{r graph_GSM3035933, echo = FALSE, fig.cap = "GSE111629 samples in the region chr5:10249761-10251252", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/vignette/fig/GSM3035933_chr5-10249761-10251252.png")
+knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035933_chr5-10249761-10251252.png"))
 ``` 
 ## Results
 
@@ -413,7 +419,7 @@ kableExtra::kbl(df[,-2], align = 'c') %>%
 
 
 ```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png")
+knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE51032_chr17_46018653_46019185.png"))
 ```
 
 ```{r table_GSE111629, echo = FALSE, results='asis'}
@@ -431,19 +437,19 @@ kableExtra::kbl(mean_table, align = 'c') %>%
 ```
 
 ```{r graph_GSE111629_1, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png")
+knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr5_10249760_10251253.png"))
 ```
 
 ```{r graph_GSE111629_2, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:67583971-67584381", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png")
+knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr5_67583971_67584381.png"))
 ```
 
 ```{r graph_GSE111629_3, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr17:46018653-46019185", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png")
+knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr17_46018653_46019185.png"))
 ```
 
 ```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center'}
-knitr::include_graphics("C:/Users/Leire/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png")
+knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr19_11199850_11200147.png"))
 ```
 
 \newpage
