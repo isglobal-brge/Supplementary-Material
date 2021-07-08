@@ -62,7 +62,7 @@ The input data should contain information about $\beta$ values of CpG sites, phe
 
 If you want to combine data from different studies, normalization is highly recommended. The preprocessing step removes the unwanted variation caused by the batch effect. In addition, it converts raw  microarray intensities to `GenomicRatioSet` (necessary input class for `epimutations()` function). Finally, the case and control samples are introduced separately in `epimutations()` function. 
 
-The figure \ref{fig:workflow} shows the workflow related to the data types, normalization and inputs of `epimutations()` function.  
+Figure \ref{fig:workflow} shows the workflow related to the data types, normalization and inputs of `epimutations()` function.  
 
 ```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and epimutations function input", out.width = '90%', fig.align='center'}
 knitr::include_graphics(file.path(getwd(),"vignette/fig/workflow.png"))
@@ -72,7 +72,7 @@ knitr::include_graphics(file.path(getwd(),"vignette/fig/workflow.png"))
 
 # Getting started
 
-The `epimutacions` package is available on GitHub and can be installed by executing the following comand: 
+The `epimutacions` package is available on GitHub and can be installed by executing the following command: 
 ```{r, eval=FALSE}
 install_github("isglobal-brge/epimutacions")
 ```
@@ -117,7 +117,7 @@ candRegsGR
 
 ## GenomicRatioSet
 
-The package includes a small `GenomicRatioSet` class dataset (`methy` `r data("methy", package = "epimutacions")`) containing the DNA methylation profiles from a total of  `r ncol(methy)` individuals, `r ncol(methy[,methy$status == "case"])` cases and `r ncol(methy[,methy$status == "control"])` controls. The DNA methylation profiles were generated using the Illumina 450k Human Methylation BeadChip [@reproducibilityinfinium]. The data corresponds to GSE104812 cohort from  [Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/). It has been adapted for the package usage. 
+The package includes a small `GenomicRatioSet` class dataset (`methy` `r data("methy", package = "epimutacions")`) containing the DNA methylation profiles from a total of  `r ncol(methy)` individuals, `r ncol(methy[,methy$status == "case"])` cases and `r ncol(methy[,methy$status == "control"])` controls. The DNA methylation profiles were generated using the Illumina 450k Human Methylation BeadChip [@reproducibilityinfinium]. The data corresponds to GSE104812 cohort from  [Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/). It has been adapted for package usage. 
 
 
 ```{r}
@@ -189,7 +189,7 @@ Those methods have unique parameters (table \ref{tab:prep_unique_parameter}) tha
 +---------------+------------------+-----------------------------------------------------------------------------+
 |`funnorm` | `nPCs `\              | The number of principal components from the control probes\                 |       
 |          | `sex`\                | Sex of the samples\                                                         |      
-|          | `bgCorr`\             | Performs NOOB background correction prior to functional normalization\      |
+|          | `bgCorr`\             | Performs NOOB background correction before   functional normalization\      |
 |          | \                     |                                                                             |
 |          | `dyeCorr`\            | Performs dye normalization\                                                 |
 |          | `keepCN`              | Keeps copy number estimates                                                 |
@@ -242,7 +242,7 @@ epi_beta <- epimutations(case_samples, control_samples, method = "beta")
 
 ## Unique parameters
 
-The `epi_parameters()` function  is  useful to set the individual parameters for each approach. The arguments are described in the table \ref{tab:epi_unique_parameter}: 
+The `epi_parameters()` function  is  useful to set the individual parameters for each approach. The arguments are described in table \ref{tab:epi_unique_parameter}: 
 
 \captionof{table}{epimutation function approaches  unique parameters}
 \label{tab:epi_unique_parameter}
@@ -286,7 +286,7 @@ parameters$manova$pvalue_cutoff
 
 ## Results description
 
-The `epimutations` function returns a `tibble` containing all the epivariants identified in the given case sample. In case no epimutation is found, a row containing the case sample information and missing values for each argument is returned. The table \ref{tab:output_description} describes each argument in the result data frame: 
+The `epimutations` function returns a `tibble` containing all the epivariants identified in the given case sample. In case no epimutation is found, a row containing the case sample information and missing values for each argument is returned. Table \ref{tab:output_description} describes each argument in the result data frame: 
 
 \captionof{table}{epimutation function output arguments description}
 \label{tab:output_description}
@@ -355,27 +355,27 @@ kable(rst_mvo[c(1,29), c(1, 12:14)], caption = "epimutations annotation")
 
 ## Epimutation visualization
 
-The  visualization approach locates the epimutations along the genome. The function `plot_epimutations()` plots the methylation values of the  individual with the epimutation in red, the control samples in dashed black lines and population mean in blue:  
+The  visualization approach locates the epimutations along the genome. The function `plot_epimutations()` plots the methylation values of the  individual with the epimutation in red, the control samples in dashed black lines and population mean in blue (figure \ref{fig:plot_default}):  
 
-```{r plot_default, fig.cap="beta values of case sample againts control samples"}
+```{r plot_default, fig.cap="beta values of case sample againts control samples \\label{fig:plot_default}"}
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy)
 ```
 
 Furthermore, it includes the gene annotations in the regions in which the epivariation is located.  This can be achieved by using the argument  `gene_annot == TRUE` (figure \ref{fig:plot_mvo_genes_annot}): 
 
-```{r, plot_mvo_genes_annot, fig.cap="beta values of case sample againts control samples including UCSC gene annotation"}
+```{r, plot_mvo_genes_annot, fig.cap="beta values of case sample againts control samples including UCSC gene annotation \\label{fig:plot_mvo_genes_annot}"}
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy, genes_annot = TRUE)
 ```
 
 
-Also, it is possible to plot the chromatin marks H3K4me3, H3K27me3  and H3K27ac by setting the argument `regulation = TRUE`:
+Also, it is possible to plot (figure \ref{fig:plot_mvo_regulation}) CpG islands and chromatin marks H3K4me3, H3K27me3  and H3K27ac by setting the argument `regulation = TRUE`:
 
 * **H3K4me3**: commonly associated with the activation of transcription of nearby genes.
 * **H3K27me3**: is used in epigenetics to look for inactive genes.
 * **H3K27ac**: is associated with the higher activation of transcription and therefore defined as an active enhancer mark
 
 
-```{r, plot_mvo_regulation}
+```{r, plot_mvo_regulation, fig.cap="beta values of case sample againts control samples including CpG islands  \\label{fig:plot_mvo_regulation}"}
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy, regulation = TRUE)
 ```
 
@@ -393,16 +393,18 @@ primary colorectal cancer and 20 other primary cancers. The GSE111629 cohort 335
 
 ## Validation
 
-We evaluated the performance of the method using True Positive Rate(TPR), False Positive Rate (FPR) and accuracy. We use the TPR to measure the proportion of detected epivariations by the `epimutations` approach  present in the validated (table \@ref(tab:tableEpiValidated)) by [@garg2020survey]. FPR to calculate the identified epimutations outside the once found in [@garg2020survey], whether validated or not. The accuracy measures the closeness of the detected epimutation to the validated regions. 
+We evaluated the performance of the method using True Positive Rate (TPR), False Positive Rate (FPR) and accuracy. We used the TPR to measure the proportion of detected epivariations by the `epimutations` approach  present in the validated (table \ref{tab:table_validated}) by [@garg2020survey]. FPR to calculate the identified epimutations outside the once found in [@garg2020survey], whether validated or not. The accuracy measures the closeness of the detected epimutation to the validated regions. 
 
-We select samples differently depending on the study group and measure to compute. Control samples were selected randomly using different sample size: 20, 30, 40, 50, 60, 70, 80, 90 and 100. However, case samples were selected considering validated epimutations (for TPR and accuracy)  or excluding epivariations found (for FPR) [@garg2020survey].  
+
+We select samples differently depending on the study group and measure to compute. Control samples were selected randomly using different sample size: 20, 30, 40, 50, 60, 70, 80, 90 and 100. However, case samples were selected considering validated epimutations (for TPR and accuracy) or excluding epivariations found (for FPR) [@garg2020survey].  
+
 
 The validated epimutations in table \ref{tab:table_validated} were only present on 5 individuals: GSM1235784 from GSE51032 cohort and GSM3035933, GSM3035791, GSM3035807 and GSM3035685 from GSE111629. Therefore, they were established as case samples when computing TPR and accuracy. Nevertheless, we compute FPR excluding the samples containing at least one epimutation found by [@garg2020survey].  For the remaining case samples, 4 were selected randomly in each execution.
 
-We execute 100 times the same process for each control sample size. We define for the analysis regions of $\approx$ 20 kb containing $\ge$ 3 GpGs. 
+We executed 100 times the same process for each control sample size. We defined for the analysis regions of $\approx$ 20 kb containing $\ge$ 3 GpGs. 
 
 ```{r tableEpiValidated, echo=FALSE, tab.cap='(ref:tableEpiValidated)'}
-load("hpc/inputs/epi_validated.rda")
+load(file.path(getwd(),"hpc/inputs/epi_validated.rda"))
 epi_validated <- as.data.frame(epi_validated)
 epi_validated$samples <- c("GSM1235784/GSM3035791",
                            "GSM3035685",
@@ -445,7 +447,7 @@ We compared GSM1235784 case sample against randomly selected control samples fro
 We obtained similar results in both cohorts. We observed that the methods manova, mahalanobis distance, multivariate linear models, barbosa and beta identified the validated epimutations with a TPR of $>99\%$ even if the control sample is small. However,  the TPR in isolation forest increases together with the number of control samples obtaining a TPR $\ge$ 75 with 50 control samples or more. Regarding the accuracy, all the statistical  approaches detect the epivariants with $>80\%$ of closeness to the validated epimutations. 
 
 We detected possible epivariations outside the epimutations found by [@garg2020survey] selecting random regions of 20 kb and $\ge$ 3 GpGs for both, control and case samples. We compared individual methylation profiles of a single case 
-sample against control samples. We observed that in both cohorts and for every approach the FPR value is minimum $<0.01\%$. 
+sample against control samples. We observed that in both cohorts and for every approach the FPR value was minimum $<0.01\%$. 
 
 ```{r table_GSE51032, echo = FALSE}
 library(dplyr)
@@ -496,6 +498,7 @@ knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr17_
 ```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center'}
 knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr19_11199850_11200147.png"))
 ```
+
 
 \newpage
 
