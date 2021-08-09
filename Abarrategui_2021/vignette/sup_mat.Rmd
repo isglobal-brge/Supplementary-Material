@@ -60,7 +60,7 @@ The package allows two different types of inputs:
 
 The input data should contain information about $\beta$ values of CpG sites, phenotype and feature data. 
 
-If you want to combine data from different studies, normalization is highly recommended. The preprocessing step removes the unwanted variation caused by the batch effect. In addition, it converts raw  microarray intensities to `GenomicRatioSet` (`epimutations()` function input). Finally, the case and control samples are introduced separately in `epimutations()` function.  
+The normalization converts the raw microarray intesities into usable methylation measurement ($\beta$ values at CpG locus level). As a results, we obtain  `GenomicRatioSet` object that can be used as `epimutations()` function input.  The case and control samples need to be introduced separately in `epimutations()` function.  
 
 ```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and epimutations() function input", out.width = '90%', fig.align='center'}
 knitr::include_graphics(file.path(getwd(),"vignette/fig/workflow.png"))
@@ -70,7 +70,8 @@ knitr::include_graphics(file.path(getwd(),"vignette/fig/workflow.png"))
 
 # Getting started
 
-The `epimutacions` package is available on GitHub and can be installed by executing the following command: 
+The `epimutacions` package is available on GitHub and can be installed by executing the following command:
+
 ```{r, eval=FALSE}
 install_github("isglobal-brge/epimutacions")
 ```
@@ -91,6 +92,7 @@ library(kableExtra)
 \newpage
 
 # Datasets
+
 
 ## Candidate regions
 
@@ -127,7 +129,7 @@ table(methy$status)
 
 ## IDAT files and RGChannelSet
 
-Additionally, as a external data  4  case samples IDAT files from [(GEO:GSE131350)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE131350) are included.
+Additionally, as external data  4  case samples IDAT files from [GSE131350](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE131350) cohort are included.
 
 ```{r IDAT files}
 baseDir <- system.file("extdata", package = "epimutacions")
@@ -135,7 +137,7 @@ list.files(baseDir)
 targets <- minfi::read.metharray.sheet(baseDir)
 ```
 
-The reference panel (`RGChannelSet` object) contains DNA methylation profiles of 22 whole cord blood samples from healthy children born via caesarian [(GEO:GSE127824)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE12782). This dataset is  available in the `ExperimentHub` package. 
+The reference panel (`RGChannelSet` object) contains DNA methylation profiles of 22 whole cord blood samples from healthy children born via caesarian [(GEO: GSE127824)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE12782). This dataset is  available in the `ExperimentHub` package. 
 
 
 
@@ -189,7 +191,7 @@ Table: Preprocessing methods unique parameters
 |          |`removeBadSamples`\    | Remove bad samples\                                                         |
 |          |`badSampleCutoff`\     | The cutoff to label samples as 'bad'\                                       |
 |          |`quantileNormalize`\   | Performs quantile normalization\                                            |
-|          | `stratified`          | Performs quantile normalization within region strata\                       |
+|          | `stratified`\         | Performs quantile normalization within region strata\                       |
 |          |`mergeManifest`\       | Merged to the output the information in the associated manifest package\    |
 |          | \                     |                                                                             |
 |          |`sex`                  | Sex of the samples                                                          |
@@ -318,7 +320,7 @@ Table: epimutation function output arguments description
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 | `cpg_n`               | The number of CpGs in the epimutation                                                                                 |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
-| `cpg_n`               | The names of CpGs in the epimutation                                                                                  |
+| `cpg_ids`             | The names of CpGs in the epimutation                                                                                  |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 | `outlier_score`       | For method `manova` it provides the approximation to F-test and the Pillai score, separated by `/`\                   |
 |                       | For method `mlm` it provides the approximation to F-test and the R2 of the model, separated by `/`\                   |
