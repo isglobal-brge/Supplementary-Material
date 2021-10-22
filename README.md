@@ -22,3 +22,13 @@ This directory contains scripts and files supporting publications from the BRGE 
 > 
 > Polymorphic genomic inversions are chromosomal variants with intrinsic variability that play important roles in evolution, environmental adaptation, and complex traits. We investigated the DNA methylation patterns of three common human inversions, at 8p23.1, 16p11.2, and 17q21.31 in 1,009 blood samples from children and in 39 prenatal heart tissue samples. We found inversion-state specific methylation patterns within and nearby flanking each inversion region in both datasets. Additionally, numerous inversion-exposure interactions on methylation levels were identified from early-life exposome data comprising 64 exposures. For instance, children homozygous at inv-8p23.1 and higher meat intake were more susceptible to TDH hypermethylation (P=3.8x10-22); being the inversion, exposure, and gene known risk factors for adult obesity. Inv-8p23.1 associated hypermethylation of GATA4 was also detected across numerous exposures. Our data indicate that the pleiotropic influence of inversions during development and lifetime is substantially mediated by allele-specific methylation patterns which can be modulated by the exposome. 
 
+
+
+**5. Caceres, Alejandro and Gonzales, JUan R 2021** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Caceres_2021)
+
+> teff: estimation of Treatment EFFects on transcriptomic data with casual random forest
+> 
+> Causal inference on high dimensional feature data can be used to find a profile of patients who will benefit the most from treatment rather than no treatment. However, there is a need for usable implementations for transcriptomic data. We devel-oped teff that applies random causal forest on gene expression data to target individuals with high expected treatment effects.
+
+> We applied teff to extract a profile of high benefit of treating psoriasis with brodalumab and observed that it was associat-ed with high T cell abundance in non-lesional skin at baseline and a low response to etanercept in an independent study. Individual patient targeting with causal inference profiling can inform the choice between treatments before the intervention begins.
+
