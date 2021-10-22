@@ -1,0 +1,740 @@
+---
+title: "Supplementary Information for teff: estimation of Treatment EFFects on transcriptomic data with casual random forest"
+
+author: 
+  - name: Alejandro Caceres
+    affiliation: 
+    - Instituto de Salud Global de Barcelona (ISGlobal), Barcelona, Spain
+    - Department of Mathematics, Escola d'Enginyeria de Barcelona Est (EEBE) Universitat Politècnica de Catalunya, Barcelona Spain.
+    email: alejandro.caceres```isglobal.org 
+  - name: Juan R. González
+    affiliation: 
+    - Instituto de Salud Global de Barcelona (ISGlobal), Barcelona, Spain
+    - Department of Mathematics, Universitat Autònoma de Barcelona, Barcelona, Spain 
+package: teff
+output: 
+  BiocStyle::html_document:
+    number_sections: true
+    toc_float: yes
+vignette: >
+  %\VignetteIndexEntry{Predicting treatment effects with teff}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+
+# Supplementary Methods
+
+We analyzed publicly available data in the GEO repository, using the R/Bioconductor packages that can be found at  \url{https://www.bioconductor.org/}. Main results are obtained from the application of the package **teff** (\url{https://github.com/teff-package/teff}). The results discussed in the manuscript can be entirely reproduced with the following code. 
+
+## Retriving data from GSE117468
+
+We downloaded transcriptomic and clinical data from 3-phase 3 clinical trials (AMAGINE 1-2-3) as deposited in GEO on the 2nd of April of 2020 with accession number GSE117468
+
+```{r, echo=FALSE}
+Sys.setenv(VROOM_CONNECTION_SIZE=5000072)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+library(GEOquery)
+gsm <- getGEO("GSE117468", destdir ="./data", AnnotGPL =TRUE)
+```
+
+
+We first obtained clinical data relating to age, BMI, PASI, tissue (lesional or nonlesional), and brodalumab or placebo treatment. We considered all patients under two different brodalumab doses ($140 mg$ and $210 mg$).
+
+```{r, warning=FALSE, message=FALSE, results='hide'}
+#obtain phenotype data
+phenobb <- pData(phenoData(gsm[[1]]))
+
+#patient and sample IDs
+patient <- phenobb$"patientid:ch1"
+id <- rownames(phenobb)
+
+#type of visit (baseline W0 or week 12 W12)
+visit <- phenobb$"visit:ch1"
+
+#clinical data
+age <- as.numeric(phenobb$"age:ch1")
+bmi <- as.numeric(phenobb$"bmi:ch1")
+eff <- as.numeric(phenobb$"pasi:ch1")
+tissue <- phenobb$"tissue:ch1"
+t <- factor(factor(phenobb$"treatment:ch1",
+                   labels = c("brodalumab","brodalumab",
+                              "placebo", NA)),
+            levels=c("placebo", "brodalumab"))
+```
+
+We selected clinical data at baseline (BL) and transcriptomic data for non-lesional skin and stored the information in the **pheno** **data.frame**
+
+```{r, warning=FALSE, message=FALSE}
+selBLN <- visit=="BL" & tissue=="non-lesional skin"
+age <- age[selBLN]
+bmi <- bmi[selBLN]
+t <- t[selBLN]
+id <- id[selBLN]
+effbase <- eff[selBLN]
+
+pheno <- data.frame(age, bmi, patient=patient[selBLN], t)
+rownames(pheno) <- id
+
+head(pheno)
+```
+
+
+We selected clinical data at baseline (BL) and transcriptomic data for nonlesional skin and PASI at week 12.
+
+```{r, warning=FALSE, message=FALSE}
+#obtain PASI at week 12
+effend <- eff[which(visit=="W12" & tissue=="non-lesional skin")]
+names(effend) <- patient[visit=="W12" & tissue=="non-lesional skin"]
+effend <- effend[as.character(pheno$patient)]
+
+
+
+#add effects
+pheno <- cbind(pheno,
+               eff = as.factor(effbase>effend), #response in PASI
+               effdif = (effbase-effend)/effbase, #level of repose in PASI
+               effbase = effbase, # PASI at baseline
+               effend = effend) # PASI at week 12
+
+#store clinical data, store in phenodat
+pheno <- pheno[complete.cases(pheno),]
+head(pheno)
+```
+
+The outcome variables were:
+
+- effbase: PASI at baseline ($W0$)
+- effend: PASI at week 12 ($W12$)
+- eff: categorical improvement given by the improvement in PASI between baseline and week 12 ($W12<W0$)
+- effdif: fraction of impovement of PASI from baseline ($\frac{W0-W12}{W0}$)
+
+We then obtained the transcriptomic data for the selected individuals across 53951 transcripts.
+
+```{r, warning=FALSE, message=FALSE}
+#obtain annotation data, store in genesIDs
+genesIDs <- fData(gsm[[1]])
+
+#obtain transcriptomic data, store in expr
+expr <- exprs(gsm[[1]])
+expr <- expr[,rownames(pheno)]
+
+genesid <- sapply(strsplit(genesIDs$"Gene symbol", "/"), function(x) x[1])
+names(genesid) <- rownames(genesIDs)
+genesentrez <- genesIDs$"Gene ID"
+names(genesentrez) <- rownames(genesIDs)
+
+dim(expr)
+```
+
+
+We have the final set of individuals used in the analysis
+
+```{r, warning=FALSE, message=FALSE}
+table(pheno$t)
+```
+
+
+## Transcriptome-wide interaction analysis
+
+We used Bioconductor packages **limma** and **sva** to estimate the differential gene expression with the interaction between categorical PASI improvement and treatment type brodalumab or placebo. We extracted the surrogate variables with **sva** and estimated the effects of the interaction with **limma**.
+
+We, therefore, tested the association between gene expression and the interaction between PASI improvement  ($P$) and treatment ($t$) using the linear model
+
+\[
+E_{ij} = \alpha_i + \beta_i (P_j \times t_j) + \sum_{r=1...k} \gamma_{ijk} C_{rj} + \epsilon_{ij}
+\]
+
+
+where $E_{ij}$ is the post-processed transcript intensity $i$ for individual $j$ with PASI improvement $P_j$ and treatment $t_j$. $C_{rj}$ are $k$ covariates that include age, BMI and surrogate effects. $\beta_i$ was the effect of interest that measures the association between the expression level of probe $i$ and the interaction between PASI improvement and treatment. Significant genes were obtained from false discovery rates (FDR) $<0.05$ of P-values corrected for multiple comparisons.
+
+
+```{r, warning=FALSE, message=FALSE}
+library(sva)
+library(limma)
+
+##intearaction between treatment and improvement in PASI: t*eff
+
+#compute SVAs
+mod0 <- model.matrix( ~  t + eff  + age + bmi, data = pheno)
+mod <- model.matrix( ~ t:eff + t + eff  + age + bmi, data = pheno)
+ns <- num.sv(expr, mod, method="be")
+ss <- sva(expr, mod, mod0, n.sv=ns)$sv
+modss <- cbind(mod, ss)
+
+#estimate associations
+fit <- lmFit(expr, modss)
+fit <- eBayes(fit)
+```
+
+The volcano plot showed numerous genes with significant differential expression, downregulated with the interaction. The volcano plot is obtained as follows 
+
+```{r, warning=FALSE, message=FALSE}
+library(EnhancedVolcano)
+
+tt <- topTable(fit, coef="tbrodalumab:effTRUE", number=Inf)
+
+gns <- genesid[rownames(tt)]
+gns[11:length(gns)] <- ""
+tt <- data.frame(genes=gns, tt)
+
+
+EnhancedVolcano(tt, lab = tt$genes, 
+                selectLab  = na.omit(tt$genes[1:11]), 
+                x = 'logFC', y = 'P.Value', 
+                xlim=c(-7, 7),  
+                pCutoff = 0.05/nrow(tt),
+                labSize = 4.0,
+                labCol = 'black',
+                labFace = 'bold',
+                boxedLabels = TRUE,
+                legendPosition = 'bottom',
+                drawConnectors = TRUE,
+                widthConnectors = 1,
+                colConnectors = 'black',
+                title = "PASI response",
+                subtitle = "Differential expression")
+```
+
+
+We selected the association that was significant after false-discovery rate correction.
+
+```{r, warning=FALSE, message=FALSE}
+tt <- topTable(fit, number=Inf, coef="tbrodalumab:effTRUE")
+
+#Select significant associations
+trascriptname <- rownames(tt)
+sigGenespso <- trascriptname[tt$adj.P.Val<0.05]
+
+tt <- data.frame(Gene= genesid[sigGenespso], tt[sigGenespso,])
+
+tt[,c(2:4,7)] <- format(tt[,c(2:4,7)], digits=3)
+tt[,5:6] <- format(tt[,5:6], digits=3, scientific=TRUE)
+```
+
+\newpage
+```{r, warning=FALSE, message=FALSE}
+head(tt,20)
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(xtable)
+
+x <- xtable(tt,
+            label="Differential expression results",
+            display=c("s", "s", rep("g",6)), digits=c(0, 0, rep(3,6)))
+
+print(x,file="./tables1.tex", floating=FALSE,
+     include.rownames = TRUE, tabular.environment="longtable", caption.placement="bottom")
+```
+
+
+
+
+We illustrate top association by violin plots of the residuals of the log-fold change against for the categories: i) Placebo or no improvement of categorial PASI and ii) Brodalumab and improvement of PASI. The significant interaction is illustrated in the violin plots by the difference in gene transcription between those two categories. 
+
+```{r, warning=FALSE, message=FALSE}
+library(vioplot)
+
+par(mfrow=c(1,3))
+
+top <- rownames(tt)[1]
+tr <- log(expr[top,])
+res <- summary(lm(tr~modss[,-c(1,2,3,6)]))$residuals
+et <- modss[,6]
+fc <- factor(modss[,6], labels=c("\n Placebo \n OR \n No response",
+                                 "\n Brodalumab  \n AND \n Response"))
+vioplot(res~fc, xlab="", main="NR4A2",
+        ylab="log-fold change residuals", cex.names=0.5)
+
+top <- rownames(tt)[2]
+tr <- log(expr[top,])
+res <- summary(lm(tr~modss[,-c(1,2,3,6)]))$residuals
+et <- modss[,6]
+fc <- factor(modss[,6],
+             labels=c("\n Placebo \n OR \n No response",
+                      "\n Brodalumab  \n AND \n Response"))
+vioplot(res~fc, xlab="", main="IGH",
+        ylab="log-fold change residuals", cex.names=0.5)
+
+
+top <- rownames(tt)[8]
+tr <- log(expr[top,])
+res <- summary(lm(tr~modss[,-c(1,2,3,6)]))$residuals
+et <- modss[,6]
+fc <- factor(modss[,6], labels=c("\n Placebo \n OR \n No response",
+                                 "\n Brodalumab  \n AND \n Response"))
+vioplot(res~fc, xlab="", main="EGR4 ",
+        ylab="log-fold change residuals", cex.names=0.5)
+```
+
+Enrichment analyses were performed for the molecular functions of the gene ontology terms 
+
+(http://geneontology.org/).
+
+```{r, warning=FALSE, message=FALSE}
+library(clusterProfiler)
+
+mappedgenesIds <- genesentrez[rownames(tt)]
+mappedgenesIds <- unique(unlist(strsplit(mappedgenesIds, " /// ")))
+
+#run enrichment in GO
+GO <- enrichGO(gene = mappedgenesIds, 'org.Hs.eg.db',
+               ont="MF", pvalueCutoff=0.05, pAdjustMethod="BH")
+
+
+GO <- data.frame(ID=GO$ID, Description=GO$Description,
+                 Padj=format(GO$p.adjust, digits=3, sientific=TRUE), GeneRatio=GO$GeneRatio)
+
+
+head(GO)
+```
+
+## causal random forest
+
+We implemented causal random forest package **grf** (https://grf-labs.github.io/grf/) for trancriptomic data in the software package **teff** (https://github.com/teff-package/teff). For installing **teff**
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library(devtools)
+install_github("teff-package/teff")
+```
+
+We prepared feature data corresponding to the transcriptomic data of the significant transcripts identified in the previous analysis and treatment-effect data corresponding to the treatment received, categorial PSI improvement, and clinical and surrogate covariates.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library(teff)
+
+#Prepare data, features: trascription data, teff: treatment, effect and covariates
+teffdata <- modss[,-c(1,6)]
+colnames(teffdata)[1:2] <- c("t", "eff")
+colnames(teffdata)[5:ncol(teffdata)] <- paste0("cov",5:ncol(teffdata))
+
+psoriasis <- list(features=t(expr), teffdata=teffdata)
+```
+
+
+We aimed to estimate for each patient the benefit of a potential brodalumab treatment vs placebo according to their transcription data on nonlesional skin at baseline. We defined the potential effect of brodalumab treatment $\tau(p)$ 
+
+A main advantage of CRF is that it can estimate the confidence interval (CI) for $\tau(p)$. We applied CRF to the transcription levels of selected genes. First, a random train-set of $80\%$ patients is drawn to grow the forest. The remaining $20\%$ of patients were set aside and not used to grow the forest. These test individuals were used to estimate their $\tau(p)$ and $95\%$ CIs according to the CRF predictor. The application of these procedures was implemented in the function **profile** of **teff**
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+pso <-predicteff(psoriasis, featuresinf=sigGenespso, profile=TRUE, dup=TRUE, quant = 0.3)
+```
+
+
+We plot $\tau(p)$ with its $95\%$ CIs, using the function **plotPredict**
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+plotPredict(pso, lb=expression(tau(p)), 
+            ctrl.plot = list(lb=c("Placebo", "Brodalumab"), 
+                             wht="topleft", whs = "bottomright"))
+```
+
+
+## Logistic relation between $\tau(p)$ and observed PASI improvement
+
+$\tau(p)$ is a measure at baseline for the estimated benefit of a potential treatment with brodalumab vs placebo. We did not observe any correlation of the prediction at baseline with future treatment or with PASI at baseline, for either treatment.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+treatment <- pso$treatment+1
+names(treatment) <- pso$subsids
+
+tau <- pso$predictions
+names(tau) <- pso$subsids
+
+selsubs <- names(tau)
+
+response <- pheno[selsubs,"effdif"]
+base <- pheno[selsubs,"effbase"]
+bmi <- pheno[selsubs,"bmi"]
+age <- pheno[selsubs,"age"]
+
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#association with treatment
+summary(lm(log(tau/(1-tau))~treatment))
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#association with PASI at baseline in placebo
+summary(lm(log(tau/(1-tau))~base, subset=which(treatment==1)))
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#association with PASI at baseline in brodalumab
+summary(lm(log(tau/(1-tau))~base, subset=which(treatment==2)))
+```
+
+
+To assess the power of the prediction, we tested whether the prediction correlated with the observed levels do response at week 12 after treatment with brodalumab or placebo. We fitted a logistic relationship between the prediction at baseline (dose) with the observed levels of the improvement of PASI (response), given by the percentage of PASI improvement between baseline and week 12. For each treatment, We thus fitted the three-parameter logistic model:
+
+\[
+PASI(\tau) = \frac{d e^{b(\log(\tau)+e)}}{1+e^{b(\log(\tau)+e)}}
+\]
+
+where the lower limit is equal to $0$. $d$ is the maximum PASI improvement, $e$ the median of $\tau$ and $b$ the rate of the effect. We used the function **drm** from the package **drc**, where the rate of change $b$ is parametrized as $-b$.
+
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library(drc)
+
+#dose-respose under placebo
+dresponse <- response[treatment==1]
+dtau <- tau[treatment==1]
+metP <- drm(dresponse*100~dtau, fct=LL.3())
+metP
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#dose-respose under brodalumab
+dresponse <- response[treatment==2]
+dtau <- tau[treatment==2]
+metB <- drm(dresponse*100~dtau, fct=LL.3())
+metB
+```
+
+We plot the fitted curves with observed values.
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+plot(metB, log = "", pch=16, col="red", ylim=c(-100,100), xlim=c(0.2,0.45),
+     ylab="% of PASI improvement at week 12",
+     xlab=expression(tau(p)))
+
+plot(metP, log = "", pch=16, col="black", ylim=c(-100,100), xlim=c(0.2,0.45),
+     add=TRUE)
+
+legend("bottomleft", legend=c("Brodalumab", "Placebo"),
+       pch=16, col=c("red","black"), bty="n")
+```
+
+We tested whether there was a significant logistic relationship between $\tau$ and the levels of improvement in PASI for each treatment, using a log-likelihood test between the model and a model where the response is on average constant. We observed a strong relationship for brodalumab but not for placebo.
+
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+noEffect(metB)
+noEffect(metP)
+```
+
+We assessed the logistic relationship between PASI at baseline on PASI improvement after treatment.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#dose-respose under placebo
+dresponse <- response[treatment==1]
+dbase <- base[treatment==1]
+metP<-drm(dresponse*100~dbase, fct=LL.3())
+
+dresponse <- response[treatment==2]
+dbase <- base[treatment==2]
+metB<-drm(dresponse*100~dbase, fct=LL.3())
+
+noEffect(metB)
+noEffect(metP)
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+plot(metB, log = "", pch=16, col="red", ylim=c(-100,100), xlim=c(0,50),
+     ylab="% of PASI improvement at week 12",
+     xlab="PASI at baseline")
+
+plot(metP, log = "", pch=16, col="black", ylim=c(-100,100), xlim=c(0,50),
+     add=TRUE)
+
+legend("bottomleft", legend=c("Brodalumab", "Placebo"),
+       pch=16, col=c("red","black"), bty="n")
+```
+
+We assessed the logistic relationship between BMI on PASI improvement after treatment.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#dose-respose under placebo
+dresponse <- response[treatment==1]
+dbmi <- bmi[treatment==1]
+metP<-drm(dresponse*100~dbmi, fct=LL.3())
+
+dresponse <- response[treatment==2]
+dbmi <- bmi[treatment==2]
+metB<-drm(dresponse*100~dbmi, fct=LL.3())
+
+noEffect(metB)
+noEffect(metP)
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+plot(metB, log = "", pch=16, col="red", ylim=c(-100,100), xlim=c(20,50),
+     ylab="% of PASI improvement at week 12",
+     xlab="BMI (Kg/m^2)")
+
+plot(metP, log = "", pch=16, col="black", ylim=c(-100,100), xlim=c(20,50),
+     add=TRUE)
+
+legend("bottomleft", legend=c("Brodalumab", "Placebo"),
+       pch=16, col=c("red","black"), bty="n")
+```
+
+We assessed the logistic relationship between age on PASI improvement after treatment.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#dose-respose under placebo
+dresponse <- response[treatment==1]
+dage <- age[treatment==1]
+metP<-drm(dresponse*100~dage, fct=LL.3())
+
+dresponse <- response[treatment==2]
+dage <- age[treatment==2]
+metB<-drm(dresponse*100~dage, fct=LL.3())
+
+noEffect(metB)
+noEffect(metP)
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+plot(metB, log = "", pch=16, col="red", ylim=c(-100,100), xlim=c(20,70),
+     ylab="% of PASI improvement at week 12",
+     xlab="AGE (yrs)")
+
+plot(metP, log = "", pch=16, col="black", ylim=c(-100,100), xlim=c(20,70),
+     add=TRUE)
+
+legend("bottomleft", legend=c("Brodalumab", "Placebo"),
+       pch=16, col=c("red","black"), bty="n")
+```
+
+
+## Targeting
+
+We selected individuals with statistically significant $\tau(p)$ greater than 0.2. This was consistent with an significant increase PASI improvement of at least $25\%$ as given by the logistic relationship between $\tau$ and PASI imporvenemt, as described in the previuos section.  
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+dresponse <- response[treatment==1]
+dtau <- tau[treatment==1]
+metP <- drm(dresponse*100~dtau, fct=LL.3())
+predict(metP, data.frame(dtau=0.2))
+```
+
+The function **predicteff** extracts the individuals with $\tau>0.2$ and builds the binary transcriptomic profile for individuals with high expected brodalumab benefit.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+pso <-predicteff(psoriasis, featuresinf=sigGenespso, 
+                 profile=TRUE, dup=TRUE, quant=0.5, resplevel = 0.2)
+
+pso$profile$profpositive
+```
+
+The binary profile can be used to target individuals in other studies. To study the consistency of the targeting we first target all the individuals in the brodalumab study
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+plotPredict(pso, lb=expression(tau(p)), 
+            ctrl.plot = list(lb=c("Placebo", "Brodalumab"), 
+                             wht="topleft", whs = "bottomright"))
+```
+
+and confirmed that the targeting significantly interacts with treatment on treatment response (**eff**). Patients in the positive group are those with high predicted benefit to brodalumab while patients in the neutral groups are with low benefit. 
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+
+nmf <- colnames(psoriasis$features)
+nmf <- nmf[nmf%in%colnames(pso$profile$profpositive)]
+ll <- genesid[nmf]
+ll[is.na(ll)] <- names(ll)[is.na(ll)]
+
+res <- target(psoriasis, pso, plot=TRUE, nmcov = c("bmi", "age"), 
+              effect="positive", match=0.6, model=NULL, 
+              lb=ll)
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library(arm)
+
+y <- psoriasis$teffdata[,"eff"]
+x <- factor(res$classification, labels=c("Low benefit", "High benefit"))
+w <- psoriasis$teffdata[,"t"]
+
+summary(bayesglm(y ~ x*w, family="binomial"))
+```
+
+We investigated biological correlates of the targeting with biological conditions relevant for psoriasis etiology. We inferred the abundance of T-cell in non-lesional skin at baseline with  **immunedeconv** and correlated it with the classification of individuals into predicted high and low brodalumab benefit. We used to infer T-cell count from transcriptomic data.  
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library(immunedeconv)
+
+gns <- genesid[rownames(expr)]
+rownames(expr) <- gns
+
+
+cellcomp2 <- deconvolute(expr, "mcp_counter", arrays=TRUE,column ="Symbol")
+cellnames <- cellcomp2$cell_type
+cm<- matrix(as.numeric(t(cellcomp2)[-1,]), ncol=length(cellnames))
+colnames(cm) <- cellnames
+rownames(cm) <- colnames(cellcomp2)[-1]
+tcell <- cm[,"T cell"]
+
+boxplot(log(tcell) ~ x, 
+        xlab="Predicted group of Brodalumab benefit", 
+        ylab="T cell abuncance (log)")
+
+summary(lm(log(tcell) ~ x[names(tcell)]))
+```
+
+
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+
+#########significant result
+pso <-predicteff(psoriasis, featuresinf=sigGenespso, 
+                 profile=TRUE, dup=TRUE, quant=0.3, resplevel = 0.2)
+
+res <- target(psoriasis, pso, plot=TRUE, nmcov = c("bmi", "age"), 
+              effect="positive", match=0.6, model=NULL, 
+              lb=ll)
+
+x <- factor(res$classification, labels=c("Neutral", "Positive"))
+
+summary(lm(log(tcell) ~ x))
+
+pp <- pso$predictions
+
+summary(lm(log(tcell[pso$subsids]) ~ pp))
+```
+
+## Etanarcept study 
+
+We downloaded data from an entanercept study from GEO with accession number GSE11903. We retrieved transcriptomic and treatment response data for non-lesional skin at baseline. 
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+gsms1 <- getGEO("GSE11903", destdir ="./data", AnnotGPL =TRUE)
+phenobb <- pData(phenoData(gsms1[[1]]))
+
+#patient  and sample IDs
+patient <- sapply(strsplit(phenobb$"title", "_"), function(x) x[[1]])
+id <- rownames(phenobb)
+
+#time of visit
+visit <- phenobb$"Time:ch1"
+
+#clinical data
+eff <- as.numeric(factor(phenobb$"Group:ch1"))-1
+selbase <- visit=="0" & phenobb$"Condition:ch1"=="non-lesional"
+phenost1 <- data.frame(patient=patient, id=id, eff=eff)[selbase,]
+
+
+rownames(phenost1) <- phenost1$id
+phenost1 <- phenost1[complete.cases(phenost1),]
+```
+
+We observe 11 patients that responded after 12 weeks to the weekly administration of 50mg of etanercept  
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+head(phenost1)
+table(phenost1$eff)
+```
+
+Transcriptomic data of non-lesional skin at baseline was collected with Affymetrix Human Genome U133A 2.0 Array. 
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+genesIDs <- fData(gsms1[[1]])
+
+#obtain transcriptomic data, store in expr
+expr <- exprs(gsms1[[1]])
+expr <- expr[,rownames(phenost1)]
+
+genesidS1 <- sapply(strsplit(genesIDs$"Gene symbol", "/"), function(x) x[1])
+names(genesidS1) <- rownames(genesIDs)
+
+rownames(expr) <- genesidS1
+
+dim(expr)
+```
+
+We used transcriptomic data to infer T-cell abundance in non-lesional skin at baseline using **mcp**$\_$**counter** and fitted a regression model of response to treatment of the log-T cell levels.
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+cellcomp2 <- deconvolute(expr, "mcp_counter", arrays=TRUE,column ="Symbol")
+cellnames <- cellcomp2$cell_type
+cm<- matrix(as.numeric(t(cellcomp2)[-1,]), ncol=length(cellnames))
+colnames(cm) <- cellnames
+rownames(cm) <- colnames(cellcomp2)[-1]
+tcell <- cm[,"T cell"]
+
+phenost1$tcell <- tcell 
+y <- factor(phenost1$eff, labels=c("No Response", "Response"))
+
+boxplot(log(tcell) ~ y, ylab="T-cell abundance (log)", xlab="Observed response to Etanercept")
+
+summary(glm(log(tcell) ~ y))
+```
+
+We formatted data for targeting individuals with high brodalumab benefit, using the profile from the GSE117468 study
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+#compute SVAs
+mod0 <- model.matrix( ~ 1, data = phenost1)
+mod <- model.matrix( ~ tcell, data = phenost1)
+ns <- num.sv(expr, mod, method="be")
+ss <- sva(expr, mod, mod0, n.sv=ns)$sv
+modss <- cbind(mod, ss)
+
+teffdata <- modss
+colnames(teffdata) <- c("t","eff", paste("cov",1:(ncol(teffdata)-2), sep=""))
+
+rownames(expr) <- names(genesidS1)
+
+study1 <- list(teffdata=teffdata, features=t(expr))
+```
+
+We selected common transcript IDS in the brodalumab profile and the etanercept study. We targeted individuals with available transcripts and classified them into high and low brodalumab benefit at baseline if they matched the profile in more than $60\%$ of the transcripts.  
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+nmf <- colnames(study1$features)
+nmf <- nmf[nmf%in%colnames(pso$profile$profpositive)]
+ll <- genesid[nmf]
+ll[is.na(ll)] <- names(ll)[is.na(ll)]
+
+res <- target(study1, pso, plot=TRUE, effect="positive", match=0.6, model=NULL, lb=ll)
+```
+
+We tested the association between the targeting and response to etanercept treatment 
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library("epiR")
+
+y <- phenost1$eff
+x <- res$classification
+
+tb <- table(x,y)
+
+fisher.test(tb)
+
+epi.tests(table(x,as.numeric(y==0)), conf.level = 0.95)
+```
+
+We finally fitted a logistic regression model of brodalumab benefit and T-cell abundancy in non-lesional skin at baseline on the observed response to a 12-week treatment with etarnecept. We computed the likelihood ratio test and the variance explained by the model ($R^2=0.751$) with the function **lrm** from **rms**. 
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+library(rms)
+mod <- lrm(y ~ x + tcell, x=TRUE)
+mod
+
+prob <- predict(mod, type="fitted.ind")
+
+
+d1 <- data.frame(tcell=seq(3,4,0.01),x=0)
+l1 <- predict(mod, d1, type="fitted.ind")
+
+d2 <- data.frame(tcell=seq(3,4,0.01),x=1)
+l2 <- predict(mod, d2, type="fitted.ind")
+
+plot(tcell, prob, col=x+1, pch=16, ylab="Predicted Probability of Eternacept Response")
+lines(seq(3,4,0.01), l1)
+lines(seq(3,4,0.01), l2, col="red")
+points(tcell, y, col=x+1, pch=3)
+
+legend(3,0.3, 
+       legend = c("High Brodalumab Benefit", "Low Brodalumab Benefit", 
+                  "Fitted Probability", "Observed Response"), 
+       col=c("red", "black", "black", "black"), 
+       pch=c(15,15,16,3), 
+       bty = "n")
+```
