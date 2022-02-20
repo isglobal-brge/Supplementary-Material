@@ -42,7 +42,8 @@ phenos <- data.frame(inv8_001=as.numeric(methy8$inv8_001)-1,
                      maternal_education=as.numeric(imppost_final$h_edumc_None),
                      bmi=imppost_final$hs_c_bmi_None)
 
-phenos <- cbind(phenos, pData(methy8)[,c(40:45,56:65)])
+#Add cell composition and PCs from GWAS
+phenos <- cbind(phenos, pData(methy8)[,c(40:45,71:80)])
 
 #Store the name of the exposures
 exp_variables <- colnames(exps)
@@ -84,6 +85,7 @@ diff_inter <- function(dataset, exps, phenos, inversion, expo){
                             CpG=character(),
                             Location=character(),
                             Gene_Symbol=character(),
+                            Gene_Group=character(),
                             LogFC=numeric(),
                             CI.L=numeric(),
                             CI.R=numeric(),
@@ -105,6 +107,7 @@ diff_inter <- function(dataset, exps, phenos, inversion, expo){
                      CpG = cpg,
                      Location=paste0(as.character(seqnames(dataset[cpg,])),":",as.character(start(dataset[cpg,]))),
                      Gene_Symbol=rowData(dataset)[cpg,"UCSC_RefGene_Name"],
+                     Gene_Group=rowData(dataset)[cpg,"UCSC_RefGene_Group"],
                      LogFC=topcpgs[cpg,"logFC"],
                      CI.L=topcpgs[cpg,"CI.L"],
                      CI.R=topcpgs[cpg,"CI.R"],
@@ -258,7 +261,7 @@ meta_interaction <- function(interaction, cohorts, cpgs){
     dirstudies[dirstudies==0] <- "ns"
     
     names(dirstudies) <- paste0("DIR_",cohorts)
-    df_inter <- cbind(list[[cpg]][1,c(1:8)], res_met, t(as.data.frame(dirstudies)))
+    df_inter <- cbind(list[[cpg]][1,c(1:9)], res_met, t(as.data.frame(dirstudies)))
     return(df_inter)
   }
   
@@ -282,10 +285,11 @@ inter_methy$p.adj <- p.adjust(inter_methy$p, method="bonferroni")
 inter_methy <- inter_methy[order(inter_methy$p.adj),]
 
 #Change p column for pval column
-colnames(inter_methy)[14] <- "pval"
+colnames(inter_methy)[15] <- "pval"
 
 #Remove level and df columns
-inter_methy <- inter_methy[,-c(15,16)]
+inter_methy$level <- NULL
+inter_methy$df <- NULL
 
 #Select only one gene symbol per CpG
 allsymbols_to_symbol <- function(allsymbols) {

@@ -59,7 +59,7 @@ sampleNames(imppost) <- post_HelixID
 
 ## ADD THE INVERSIONS AND PCS FROM GWAS IN THE pData AND DISCARD THE NON-EUROPEAN SAMPLES
 
-inversions <- scClassDF[,c("inv8_001","inv16_009","inv17_007")]
+inversions <- select(scClassDF, -c("inv3_003","inv11_004","inv12_006","inv14_005")) #Discard the ones without 3 genotypes
 
 #Sort inversion genotypes as NN, NI, and II
 for (inv in colnames(inversions)){
@@ -111,6 +111,72 @@ methy_final <- methy_final[rownames(methy_final) %in% cpgs_unmask,]
 dd <- featureData(trans_final)
 genes <- rownames(dd[which(dd$GeneSymbol_Affy!="" & dd$CallRate>=20),])
 trans_final <- trans_final[genes,]
+
+## REPLACE THE GENE SYMBOL FOR THE ONES APPROVED BY HGNC
+
+#Load txt file with HGNC Gene Symbols
+hgnc <- read.table(file="/home/isglobal.lan/ncarreras/data/NataliaCarreras/paper/HGNC_gene_symbols.txt", 
+                   header=T, sep="\t", quote="", fill=T)
+
+#Create a list with all the previous and alias symbols for a gene
+other_symbols <- function(num){
+  app.symbol <- hgnc$Approved.symbol[num]
+  prev.symbol <- strsplit(hgnc$Previous.symbols[num],", ")[[1]]
+  ali.symbol <- strsplit(hgnc$Alias.symbols[num],", ")[[1]]
+  other.symbol <- c(prev.symbol,ali.symbol)
+  return(other.symbol)
+}
+
+hgnc_list <- sapply(1:nrow(hgnc),other_symbols)
+names(hgnc_list) <- hgnc$Approved.symbol
+
+#Create a function for changing the gene symbols in our datasets
+change_symbol <- function(i, data){
+  print(i)
+  if (data=="trans"){
+    gene_affy <- fData(trans_final)$GeneSymbol_Affy[i]
+  }
+  if (data=="methy"){
+    gene_affy <- rowData(methy_final)$UCSC_RefGene_Name[i]
+  }
+  #Skip features without Gene Symbol annotated
+  if (gene_affy==""){
+    return("")
+  }
+  #Separate each gene symbol in a different character
+  symbols <- strsplit(gene_affy,";")[[1]]
+  #Through each gene, search the approved gene symbol in HGNC
+  for (j in 1:length(symbols)){
+    if(!symbols[j]%in%names(hgnc_list)){
+      for (n in 1:length(hgnc_list)){
+        if(symbols[j]%in%hgnc_list[[n]]){
+          symbols[j] <- names(hgnc_list)[n]
+          break
+        }
+      }
+    }
+  }
+  #Join all the gene symbols
+  if (length(symbols)>1){
+    symbols <- paste0(symbols,collapse=";")
+  }
+  return(symbols)
+}
+
+##Transcription
+symbols_list <- parallel::mclapply(1:nrow(trans_final),change_symbol, 
+                                   mc.cores=10, data= "trans")
+
+#Replace the gene symbols in the trans_final dataset
+fData(trans_final)$GeneSymbol_Affy <- do.call(c, symbols_list)
+
+#Methylation
+symbols_list_methy <- parallel::mclapply(1:nrow(methy_final),change_symbol, 
+                                         mc.cores=10, data= "methy")
+
+#Replace the gene symbols in the methy_final dataset
+rowData(methy_final)$UCSC_RefGene_Name <- do.call(c, symbols_list_methy)
+
 
 ## SAVE FINAL DATASETS
 
@@ -184,6 +250,8 @@ phenos_trans <- data.frame(sex=trans8$sex,
 
 phenos_trans <- cbind(phenos_trans, colData(trans8)[,18:23])
 
+#Select samples with cell type information
+phenos_trans <- phenos_trans[which(!is.na(phenos_trans$NK_6)),]
 table_trans <- tableby(formula(paste("~", paste(colnames(phenos_trans),collapse=" + "))),
                        data = phenos_trans) 
 

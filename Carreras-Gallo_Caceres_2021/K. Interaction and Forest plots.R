@@ -178,6 +178,6 @@ plots_inter(2, factor=T, levels=c("<6","6-9",">9"))
 #GATA4
 plots_inter(9)
 
-#C8orf79
+#TRMT9B
 plots_inter(12, factor=T, levels=c("Neither","One","Both"))
 

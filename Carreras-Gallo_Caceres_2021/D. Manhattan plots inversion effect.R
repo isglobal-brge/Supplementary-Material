@@ -98,31 +98,31 @@ manhattan <- function(dataset,name_dataset,inv, lim_y, analysis){
   #Define the tracks
   
   #Track ideogram (chromosome)
-  itrack <- IdeogramTrack(genome = "hg19", chromosome = paste0("chr",chr), 
+  itrack <- IdeogramTrack(genome = "hg19", chromosome = paste0("chr",chr),
                           cex = 1.3, fontsize = 14)
-  
+
   #Track for the chr positions
   gtrack <- GenomeAxisTrack(cex = 1.3, fontsize = 11)
-  
+
   #Track manhattan plot
   dtrack <- DataTrack(data = -log10(mydata$pval), start = mydata$position,
-                      end = mydata$position, 
-                      chromosome = paste0("chr",chr), genome = "hg19", 
+                      end = mydata$position,
+                      chromosome = paste0("chr",chr), genome = "hg19",
                       name = "-log10(p-value)",
-                      size = 13, 
+                      size = 13,
                       #ylim=c(0,lim_y),
                       background.title = "#525252",
                       fontsize=24)
-  
+
   #Track inversion region
   invtrack <- GeneRegionTrack(coordinates[which(coordinates$seqnames==paste0("chr",chr)),], genome = "hg19",
-                              chromosome = paste0("chr",chr), 
+                              chromosome = paste0("chr",chr),
                               name = "Inv",
                               background.title = "#F27F24", fill="#F29724", col="#F29724")
-  
+
   png(path_plot_ggviz, res = 1200, width = 6, height = 6.3, units = "in")
   par(mar=c(5,5,2,2))
-  plotTracks(list(itrack,gtrack,dtrack,invtrack), 
+  plotTracks(list(itrack,gtrack,dtrack,invtrack),
              cex.title = 1, sizes=c(1.4,1.5,7,0.7),
              title.width = 1.8)
   dev.off()
@@ -141,8 +141,13 @@ for (inv in c("8p23.1","16p11.2","17q21.31")){
 }
 
 #Call function for transcriptome
+#Only one gene symbol per point
 for (i in 1:nrow(inv_trans)){
   inv_trans$Gene_Symbol[i] <- strsplit(inv_trans$Gene_Symbol[i],";")[[1]][1]
+}
+#No gene symbols
+for (i in 1:nrow(inv_trans)){
+  inv_trans$Gene_Symbol[i] <- ""
 }
 for (inv in c("8p23.1","16p11.2","17q21.31")){
   manhattan(inv_trans,"Transcriptome",inv, lim_y=195, analysis = "metanalysis")

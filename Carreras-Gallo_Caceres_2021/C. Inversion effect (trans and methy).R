@@ -47,7 +47,9 @@ covs_trans <- data.frame(inv8_001=as.numeric(trans8$inv8_001)-1,
                          inv17_007=as.numeric(trans8$inv17_007)-1,
                          sex=trans8$sex,
                          age=trans8$age)
-covs_trans <- cbind(covs_trans, colData(trans8)[,c(18:23,54:63)])
+
+#Add Cell composition and PCs from GWAS
+covs_trans <- cbind(covs_trans, colData(trans8)[,c(18:23,69:78)])
 
 #Define a function to obtain a data frame with the results of the differential analysis
 diff_inv_trans <- function(dataset, inversion, covs_trans){
@@ -124,13 +126,13 @@ res_trans <- lapply(cohorts,rundiff_cohort)
 
 
 
-#Create a function to load the inv_methy table for each cohort
+#Create a function to load the inv_trans table for each cohort
 load_dataset <- function(coh){
   load(paste0("/home/isglobal.lan/ncarreras/data/NataliaCarreras/paper/Differential_analysis_inv/Results_trans/metanalysis/inv_trans_",coh,".Rdata"))
   return(inv_trans)
 }
 
-#Join all the inv_methy_coh in a list
+#Join all the inv_trans_coh in a list
 allit <- parallel::mclapply(cohorts,load_dataset,mc.cores=6)
 names(allit) <- cohorts
 
@@ -183,8 +185,9 @@ inv_trans <- inv_trans[order(inv_trans$p.adj),]
 #Change p column for pval column
 colnames(inv_trans)[10] <- "pval"
 
-#Remove df column
-inv_trans <- inv_trans[,-12]
+#Remove df and level columns
+inv_trans$df <- NULL
+inv_trans$level <- NULL
 
 save(inv_trans,file=paste0("/home/isglobal.lan/ncarreras/data/NataliaCarreras/paper/Differential_analysis_inv/Results_trans/metanalysis/inv_trans.Rdata"))
 
@@ -210,7 +213,9 @@ covs_methy <- data.frame(inv8_001=as.numeric(methy8$inv8_001)-1,
                          inv17_007=as.numeric(methy8$inv17_007)-1,
                          sex=methy8$sex,
                          age=methy8$age)
-covs_methy <- cbind(covs_methy, pData(methy8)[,c(40:45,56:65)])
+
+#Add Cell composition and PCs from GWAS
+covs_methy <- cbind(covs_methy, pData(methy8)[,c(40:45,71:80)])
 
 #Define a function to obtain a data frame with the results of the differential analysis
 diff_inv_methy <- function(dataset, inversion,covs_methy){
@@ -219,6 +224,7 @@ diff_inv_methy <- function(dataset, inversion,covs_methy){
                             CpG=character(),
                             Location=character(),
                             Gene_Symbol=character(),
+                            Gene_Group=character(),
                             LogFC=numeric(),
                             CI.L=numeric(),
                             CI.R=numeric(),
@@ -236,6 +242,7 @@ diff_inv_methy <- function(dataset, inversion,covs_methy){
                      CpG = cpg,
                      Location=paste0(as.character(seqnames(dataset[cpg,])),":",as.character(start(dataset[cpg,]))),
                      Gene_Symbol=rowData(dataset)[cpg,"UCSC_RefGene_Name"],
+                     Gene_Group=rowData(dataset)[cpg,"UCSC_RefGene_Group"],
                      LogFC=topcpgs[cpg,"logFC"],
                      CI.L=topcpgs[cpg,"CI.L"],
                      CI.R=topcpgs[cpg,"CI.R"],
@@ -331,7 +338,7 @@ meta_function <- function(cpg){
   dirstudies[dirstudies==0] <- "ns"
   
   names(dirstudies) <- paste0("DIR_",cohorts)
-  df_inv <- cbind(list[[cpg]][1,c(1:4)], res_met, t(as.data.frame(dirstudies)))
+  df_inv <- cbind(list[[cpg]][1,c(1:5)], res_met, t(as.data.frame(dirstudies)))
   return(df_inv)
 }
 
@@ -343,10 +350,11 @@ inv_methy$p.adj <- p.adjust(inv_methy$p, method="bonferroni")
 inv_methy <- inv_methy[order(inv_methy$p.adj),]
 
 #Change p column for pval column
-colnames(inv_methy)[10] <- "pval"
+colnames(inv_methy)[11] <- "pval"
 
-#Remove df column
-inv_methy <- inv_methy[,-12]
+#Remove df and level columns
+inv_methy$df <- NULL
+inv_methy$level <- NULL
 
 save(inv_methy,file=paste0("/home/isglobal.lan/ncarreras/data/NataliaCarreras/paper/Differential_analysis_inv/Results_methy/metanalysis/inv_methy.Rdata"))
 
