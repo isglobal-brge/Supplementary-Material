@@ -24,11 +24,16 @@ This directory contains scripts and files supporting publications from the BRGE 
 
 
 
-**5. Caceres, Alejandro and Gonzales, JUan R 2021** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Caceres_2021)
+**5. Caceres, Alejandro and Gonzales, JUan R 2022** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Caceres_2022)
 
 > teff: estimation of Treatment EFFects on transcriptomic data with casual random forest
 > 
 > Causal inference on high dimensional feature data can be used to find a profile of patients who will benefit the most from treatment rather than no treatment. However, there is a need for usable implementations for transcriptomic data. We devel-oped teff that applies random causal forest on gene expression data to target individuals with high expected treatment effects.
 
 > We applied teff to extract a profile of high benefit of treating psoriasis with brodalumab and observed that it was associat-ed with high T cell abundance in non-lesional skin at baseline and a low response to etanercept in an independent study. Individual patient targeting with causal inference profiling can inform the choice between treatments before the intervention begins.
+
+**6. Caceres, Alejandro, Perez-Jurado, Luis A. and Gonzales, JUan R 2022** [(Supp Material)](https://github.com/isglobal-brge/Supplementary-Material/tree/master/Caceres_2022)
+
+> Sexual-dimorphism in immune cell abundance in blood can contribute to the sex differences in cancer incidence and mortality. However, little is known about the genes associated with high immune sexual-dimorphism and their potential predictive value for disease. Using machine learning methods, we identified and validated the presence of a subpopulation where women have higher T cell abundance in blood than men. Females in the subpopulation upregulate XIST and TSIX, drivers of chromosome X inactivation and escapee genes (DDX3X, KDM5C and RPS4X), while men downregulate the homologs (DDX3Y, KDM5D and RPS4Y1), predictors of chromosome Y downregulation. This subpopulation of high immune female-biased dimorphism associated with high cancer survival and low cancer risk in females. Part of the female advantage on cancer risk and survival can thus be explained by immune dimorphisms residing in a set of genes located in both sex chromosomes.
+
 
