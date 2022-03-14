@@ -43,32 +43,18 @@ knitr::opts_chunk$set(comment="", warning = FALSE, message = FALSE, cache = TRUE
 
 # Introduction
 
-## Background
+We created `epimutacions` R/Biconductor package. 
+It implements 6 outlier detection statistical methods to identify epimutations 
+in Illumina DNA methylation microarray data. `Quantile` and `beta` methods 
+test outliers for every genomic location and then group the outlier CpGs into regions. 
+`Manova`, `mlm`, `iForest` and `mahdist` test if the differentially methylated regions identified by bumphunter are outliers. The `Quantile` and `Manova` methods were previously described in the literature. 
 
-
-It is estimated that approximately 30 million people, in the EU, are affected by rare diseases. The European Commission has defined rare diseases as pathologies with a prevalence of less than 1 person in 2,000 people. It is estimated that there are between 6,000 and 8,000 different rare diseases, 80$\%$ of them with a genetic origin. These conditions can have an onset during childhood and affect 6-8$\%$ of the population during their lifetime [@EU_RD]. 
-
-Despite the successful contributions of sequence-based approaches (e.g. exome and genome sequencing), about 60$\%$ of the patients remain undiagnosed [@lionel2018improved].  It has been noted that even when the sequencing was appropriate some cases could not be diagnoses due to the origin may not be genetic. Previous studies  have demonstrated that epimutations could be the causative factor of some genetic diseases [@aref2019; @garg2020survey; @barbosa2018identification]. Epimutations can lead to cancers, such as Lynch syndrome, rare diseases such as Prader-Willi syndrome, and are associated with common disorders, such as autism. Consequently, we are assuming epimutations could help to solve the undiagnosis clinical cases using sequence based methods. To the best of our knowledge, no established method is available yet to detect and quantify suitably epimutations. However, some detection methods relying on methylation microarray data and two phases of computations have been reported. The first method identifies CpGs using outlier values and then clusterisation [@barbosa2018identification]. The second one identifies candidate regions with Bumphunter [@aref2019] and then MANOVA to test statistical significance [@aref2019]. However, the implementation of these methods has yet to be made publicly available. In addition to those two methods (i.e., `quantile` and `manova`), We implemented a beta distribution to detect CpG outliers (`beta`), or a different model to assess region significance (`mlm`, `mahdistmcd` and `isoforest`).
-
-
-The package `epimutacions` provides tools to  raw DNA methylation microarray intensities normalization and epimutations identification, visualization and annotation.  The full `epimutacions ` user´s guide is available in this document which describes: package installation; data loading and preprocessing;  epimutation identification, annotation and visualization; and GEO datasets simulations results. 
+We used two different strategies to assess the performance of our methods and compare them with the methods available in the `ramr` package. We explored the effect of sample size on the identification of 4 epimutations experimentally validated by Grag and colleagues. We calculated the epimutations per individual and epimutations overlap between the methods. 
+The epimutacions package allows raw microarray intensities and preprocessed Illumina methylation arrays. To convert the raw microarray intensities into beta values we can call the 6 normalization methods implemented in the minfi package (epi_preprocess). The package provides tools for the epimutations annotation and visualization. 
 
 The name of the package is `epimutacions` (pronounced `ɛ pi mu ta 'sj ons`) which means epimutations in Catalan, a language from the northeast of Spain.
 
-## Methodology
 
-The `epimutacions` package computes a genome-wide DNA methylation analysis to identify the epimutations to be considered as biomarkers for case samples with a suspected genetic disease. The package includes 2 functions to infer  epimutations:   (1) `epimutations()`  which uses a case-control design. It compares a case sample against a reference panel (healthy individuals); and  (2) `epimutations_one_leave_out()` which compares individual methylation profiles of a single sample (regardless if they are cases or controls) against all other samples from the same cohort. 
-
-The `epimutacions` package integrates 6 outlier detection methods; an argument referred to as `method` allows choosing between `manova`, `mlm`, `isoforest` and `mahdistmcd` to define the differentially methylated regions (DMRs) using bumphunter. Then, those DMRs are tested to identify regions with CpGs being outliers when comparing with the reference panel. Two other values,  `quantile` and `beta` defines the outlier CpGs and then group them into epimutations. The computations filter these intermediate results alongside  candidate regions to be epimutations (section \ref{candreg}) dataset calculated with bumphunter; all the regions are selected with a minimum of 3 CpGs and a maximum distance of 1kb between them [@barbosa2018identification]. The dataset is available in `epimutacionsData` package. 
-
-
-
-* `quantile`: defines outliers as values exceeding an extreme quantile Value of the reference population (by default > 0.5%). Implementation based on [@garg2020survey].
-* `beta`: fits values from reference population to a beta distribution. Values with low probability of belonging to the distribution (<1e-6 by default) are considered outliers.
-* `manova`: applies multivariate analysis of variance to the regions identified by bumphunter. It selects the outlier regions using p-value significance (by default < 0.05).
-* `mlm`: applies Multivariate Linear Model [@martin2020multivariate] to regions identified with bumphunter. It selects the outlier regions using p-value significance (by default < 0.05). 
-* `isoforest`: defines the outlier regions based on isolation forest [@cortes2021package]. It uses outlier score to identify the outliers (by default > 0.7). 
-* `mahdistmcd`: computes robust mahalanobis distance (using Minimum Covariance Determinant) to define epimutations [@maechler2021package]. It uses chi-square distribution to identify outlier regions. 
 
 
 ```{r implementation, echo=FALSE, fig.cap= "Implementation of each outlier detection method", out.width = '90%', fig.align='center'}
@@ -135,7 +121,7 @@ devtools::install_github("LeireAbarrategui/epimutacionsData")
 
 Then, we need to load the package and create an `ExperimentHub` object: 
 
-```{r}
+```{r message = FALSE}
 library(ExperimentHub)
 eh <- ExperimentHub()
 query(eh, c("epimutacionsData"))
