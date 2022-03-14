@@ -11,8 +11,8 @@ for I in ${I_VALUES}
 do
     for N in ${N_VALUES}
     do
-        sbatch --mem=15G --error=logs/'J'%j.err --output=logs/'J'%j.out --export=N=${N},I=${I} job-wrapper_GSE51032.sh
-        sbatch --mem=15G --error=logs/'J'%j.err --output=logs/'J'%j.out --export=N=${N},I=${I} job-wrapper_GSE111629.sh
+        
+        sbatch --mem=15G --error=logs/'J'%j.err --output=logs/'J'%j.out --export=N=${N},I=${I} job-wrapper.sh
     done
 done
     

@@ -1,4 +1,5 @@
 base
+futile.logger
 BiocGenerics
 Biobase
 epimutacions
@@ -22,3 +23,13 @@ rtracklayer
 dplyr
 BSgenome
 BSgenome.Hsapiens.UCSC.hg19
+dbplyr
+BiocFileCache
+AnnotationHub
+ExperimentHub
+AnnotationHubData
+ExperimentHubData
+epimutacionsData
+IlluminaHumanMethylation450kmanifest
+IlluminaHumanMethylationEPICmanifest
+IlluminaHumanMethylation450kanno.ilmn12.hg19

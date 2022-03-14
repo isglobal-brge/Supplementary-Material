@@ -4,13 +4,19 @@ author:
   - Leire Abarrategui 
   - Carlos Ruiz-Arenas
   - Carles Hernandez-Ferrer
-  - Juan R. Gonzalez
   - Patricia Ryser-Welch
+  - Juan R. Gonzalez
 date: "`r Sys.Date()`"
 header-includes:
-   - \renewcommand{\and}{\\}
-   - \usepackage{floatrow}
-   - \floatsetup[figure]{capposition=top}
+  - \newcommand{\beginsupplement}{\setcounter{table}{0}  
+  - \renewcommand{\thetable}{S\arabic{table}} \setcounter{figure}{0}
+  - \renewcommand{\thefigure}{S\arabic{figure}}}
+  - \renewcommand{\and}{\\}
+  - \usepackage{floatrow}
+  - \floatsetup[figure]{capposition=top}
+
+abstract: "Epimutations are rare alterations in the methylation pattern at specific loci. Have been demonstrated that epimutations could be the causative factor of some genetic diseases. Nonetheless, no standard methods are available to detect and quantify these alterations.  We have developed `epimutacions` package. The package implements 6 approaches to identify epimutations in genome-wide DNA methylation microarrays data. The document describes, package installation; data loading and preprocessing;  epimutation identification, annotation and visualization; and GEO datasets simulations results."
+
 output:
   pdf_document: 
     latex_engine: xelatex
@@ -33,120 +39,186 @@ knitr::opts_chunk$set(comment="", warning = FALSE, message = FALSE, cache = TRUE
 \tableofcontents
 \newpage
 
+\beginsupplement 
+
 # Introduction
 
 ## Background
 
-According to the European Commission, rare diseases are pathologies with a prevalence of less than 1 person in 2,000 people [@EU_RD]. Most of these conditions have an onset during childhood and a strong genetic etiology [@lopez2016social]. Consequently, rare disease diagnosis has relied on identifying genetic and genomic mutations that can cause the disease [@aref2019]. Although these variants have provided a diagnosis for many patients and families, around 60% of the cases remained undiagnosed [@lionel2018improved]. Aberrant methylation can be an underlying cause of undiagnosed patients, either as a primary event (a.k.a. epimutation) or as a functional consequence of chromatin dysregulation by genetic or environmental agents (a.k.a. episignature)  [@aref2019]. Epimutations are the cause of some rare diseases, such as Prader-Willi, Angelman or Beckwith-Wiedemann syndromes [@aref2019] and some human malformations [@serra2015dna]. Syndrome-specific episignatures are increasingly defined as biomarkers for a growing number of disorders [@aref2019; @garg2020survey]. Therefore, tools to detect epimutations and episignatures should be made available to the rare disease community and included in standardized analysis workflows.
+
+It is estimated that approximately 30 million people, in the EU, are affected by rare diseases. The European Commission has defined rare diseases as pathologies with a prevalence of less than 1 person in 2,000 people. It is estimated that there are between 6,000 and 8,000 different rare diseases, 80$\%$ of them with a genetic origin. These conditions can have an onset during childhood and affect 6-8$\%$ of the population during their lifetime [@EU_RD]. 
+
+Despite the successful contributions of sequence-based approaches (e.g. exome and genome sequencing), about 60$\%$ of the patients remain undiagnosed [@lionel2018improved].  It has been noted that even when the sequencing was appropriate some cases could not be diagnoses due to the origin may not be genetic. Previous studies  have demonstrated that epimutations could be the causative factor of some genetic diseases [@aref2019; @garg2020survey; @barbosa2018identification]. Epimutations can lead to cancers, such as Lynch syndrome, rare diseases such as Prader-Willi syndrome, and are associated with common disorders, such as autism. Consequently, we are assuming epimutations could help to solve the undiagnosis clinical cases using sequence based methods. To the best of our knowledge, no established method is available yet to detect and quantify suitably epimutations. However, some detection methods relying on methylation microarray data and two phases of computations have been reported. The first method identifies CpGs using outlier values and then clusterisation [@barbosa2018identification]. The second one identifies candidate regions with Bumphunter [@aref2019] and then MANOVA to test statistical significance [@aref2019]. However, the implementation of these methods has yet to be made publicly available. In addition to those two methods (i.e., `quantile` and `manova`), We implemented a beta distribution to detect CpG outliers (`beta`), or a different model to assess region significance (`mlm`, `mahdistmcd` and `isoforest`).
 
 
-This manual describes the tools available in  `epimutacions` package to identify epivariants using multiple outlier detection  approaches. It also includes functions to plot and annotate the epimutations. 
+The package `epimutacions` provides tools to  raw DNA methylation microarray intensities normalization and epimutations identification, visualization and annotation.  The full `epimutacions ` user´s guide is available in this document which describes: package installation; data loading and preprocessing;  epimutation identification, annotation and visualization; and GEO datasets simulations results. 
 
 The name of the package is `epimutacions` (pronounced `ɛ pi mu ta 'sj ons`) which means epimutations in Catalan, a language from the northeast of Spain.
 
 ## Methodology
 
-The `epimutacions` package computes a genome-wide DNA methylation analysis to detect the epigenetic variants to be considered as biomarkers for samples with rare diseases (epimutations). It compares a case sample with suspected rare disease against a reference panel.  The package focused on the detection of outliers in DNA methylation patterns associated with the diseases as proposed by [@aref2019].  
+The `epimutacions` package computes a genome-wide DNA methylation analysis to identify the epimutations to be considered as biomarkers for case samples with a suspected genetic disease. The package includes 2 functions to infer  epimutations:   (1) `epimutations()`  which uses a case-control design. It compares a case sample against a reference panel (healthy individuals); and  (2) `epimutations_one_leave_out()` which compares individual methylation profiles of a single sample (regardless if they are cases or controls) against all other samples from the same cohort. 
 
-The identification of relevant genomic methylation regions for a given sample having a rare disease will be driven by detecting differentially methylated CpG sites when comparing beta values of all control samples with the given proband. Firstly, bump-hunter [@jaffe2012bump] approach is used to identify the Differentially Methylated Regions (DMRs). Then, CpGs in the proband sample are tested in those DMRs in order to identify regions with CpGs being outliers when comparing with the reference panel. To this end, different anomaly detection statistical approaches are used. These include Multivariate Analysis of Variance (MANOVA) [@friedrich2017package], Multivariate Linear Model [@martin2020multivariate], isolation forest [@cortes2021package] and robust mahalanobis distance [@maechler2021package]. However, quantile [@garg2020survey] and Beta methods do not use bump-hunter output. Quantile [@garg2020survey] checks for each CpG, if the proband’s measurement is an outlier. Then, it calls an epimutation to those regions where 3 contiguous CpGs are outliers, and they are separated by less than 500 base pairs. Beta approach models the DNA methylation data using a beta distribution.  
+The `epimutacions` package integrates 6 outlier detection methods; an argument referred to as `method` allows choosing between `manova`, `mlm`, `isoforest` and `mahdistmcd` to define the differentially methylated regions (DMRs) using bumphunter. Then, those DMRs are tested to identify regions with CpGs being outliers when comparing with the reference panel. Two other values,  `quantile` and `beta` defines the outlier CpGs and then group them into epimutations. The computations filter these intermediate results alongside  candidate regions to be epimutations (section \ref{candreg}) dataset calculated with bumphunter; all the regions are selected with a minimum of 3 CpGs and a maximum distance of 1kb between them [@barbosa2018identification]. The dataset is available in `epimutacionsData` package. 
 
-## Input data
 
-The package allows two different types of inputs: 
 
- * (1) Case samples `IDAT` files (raw microarray intensities) together with `RGChannelSet` class object as reference panel. The reference panel can be supplied by the user or can be selected through the example datasets available in the package. 
- 
-* (2) `GenomicRatioSet` class object containing case and control samples. 
+* `quantile`: defines outliers as values exceeding an extreme quantile Value of the reference population (by default > 0.5%). Implementation based on [@garg2020survey].
+* `beta`: fits values from reference population to a beta distribution. Values with low probability of belonging to the distribution (<1e-6 by default) are considered outliers.
+* `manova`: applies multivariate analysis of variance to the regions identified by bumphunter. It selects the outlier regions using p-value significance (by default < 0.05).
+* `mlm`: applies Multivariate Linear Model [@martin2020multivariate] to regions identified with bumphunter. It selects the outlier regions using p-value significance (by default < 0.05). 
+* `isoforest`: defines the outlier regions based on isolation forest [@cortes2021package]. It uses outlier score to identify the outliers (by default > 0.7). 
+* `mahdistmcd`: computes robust mahalanobis distance (using Minimum Covariance Determinant) to define epimutations [@maechler2021package]. It uses chi-square distribution to identify outlier regions. 
 
-The input data should contain information about $\beta$ values of CpG sites, phenotype and feature data. 
 
-The normalization converts the raw microarray intesities into usable methylation measurement ($\beta$ values at CpG locus level). As a results, we obtain  `GenomicRatioSet` object that can be used as `epimutations()` function input.  The case and control samples need to be introduced separately in `epimutations()` function.  
-
-```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and epimutations() function input", out.width = '90%', fig.align='center'}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/workflow.png"))
+```{r implementation, echo=FALSE, fig.cap= "Implementation of each outlier detection method", out.width = '90%', fig.align='center'}
+knitr::include_graphics(file.path(getwd(),"fig/implementation.png"))
 ```
 
 
+# Setup
 
-# Getting started
-
-The `epimutacions` package is available on GitHub and can be installed by executing the following command:
+## Installing the package
 
 ```{r, eval=FALSE}
-install_github("isglobal-brge/epimutacions")
+devtools::install_github("isglobal-brge/epimutacions")
 ```
 
-The package is loaded in R as usual:
+
+## Loading libraries
 
 ```{r, message=FALSE}
 library(epimutacions)
 ```
 
-The document has the following dependencies: 
 
-```{r, eval=FALSE}
-library(Knitr)
-library(kableExtra)
+## Quick start
+
+The workflow in figure \ref{fig:workflow} explains the main analysis in the `epimutacions` package. 
+
+The package allows two different types of inputs: 
+
+ * (1) Case samples `IDAT` files (raw microarray intensities) together with `RGChannelSet` object as reference panel. The reference panel can be supplied by the user or can be selected through the example datasets that the package provides (section \ref{datasets}). 
+ 
+* (2) `GenomicRatioSet` object containing case and control samples.  
+
+
+The normalization (`epi_preprocess()`) converts the raw microarray intensities into usable methylation measurement ($\beta$ values at CpG locus level). As a result, we obtain a  `GenomicRatioSet` object, which can be used as `epimutations()` function input.  The data should contain information about \beta values of CpG sites, phenotype and feature data.   
+
+```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and input types", out.width = '90%', fig.align='center'}
+knitr::include_graphics(file.path(getwd(),"fig/workflow.png"))
 ```
 
-\newpage
 
-# Datasets
+# Datasets {#datasets}
 
+The package contains 3 example datasets adapted from [Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/): 
 
-## Candidate regions
+* (1) 4 case samples IDAT files [(GEO: GSE131350)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE131350)
+* (2) `reference_panel`:  a `RGChannelSet` class object containing 22 healthy individuals [(GEO: GSE127824)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE12782)
+* (3) `methy`: a `GenomicRatioSet` object which includes 49 controls [(GEO: GSE104812)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE104812) and 3 cases [(GEO: GSE97362)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi).
 
-Epimutations detection has two main steps: (1) definition of candidate regions and (2) evaluation of outlier significance. Although there are different algorithms to define epimutations regions, they share common features. In general, we define an epimutation as at least 3 contiguous CpGs with a maximum distance of 1kb between them [@aref2019; @garg2020survey].  
+We also  included a dataset specifying the 40,408 candidate regions in Illumina 450K array  which could be epimutations (see section \ref{candreg}). 
 
-In Illumina 450K array [@reproducibilityinfinium], probes are unequally distributed along the genome, limiting the number of regions that can fulfil the requirements to be considered an epimutation. So, we have computed a dataset containing the regions that are candidates to become an epimutation.  
+We created the `epimutacionsData` package in `ExperimentHub`. It contains the reference panel, methy and the candidate epimutations datasets. The package includes the IDAT files as external data.  To access the datasets  we need to install the packages by running the following commands: 
 
-To define the candidate epimutations, we relied on the clustering from bumphunter [@jaffe2012bump]. We defined a primary dataset with all the CpGs from the Illumina 450K array.  Then, we run bumphunter and selected those regions with at least 3 CpGs. As a result, we found 40408 candidate epimutations which are available in `candRegsGR` dataset.
+```{r eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
 
-Besides, we converted the candidate region from hg19 to hg38 coordinates, using NCBI remap [@holmes2020spdi]. We selected regions that mapped to one region in hg38 with the same length. This yielded a total of 39944, the 98.85% of total hg19 regions. After converting to hg38, we can use these ranges to be annotated to ENCODE cREs [@hon2020expanded]. Overall, we mapped 30163 candidate regions to cREs, representing 74.65% of total candidate regions. 
-
-
-```{r, message = FALSE}
-#Candidate regions dataset
-##load data
-data("candRegsGR")
-##data class
-class(candRegsGR)
-##dataset
-candRegsGR
+BiocManager::install("ExperimentHub")
 ```
 
-## GenomicRatioSet
+```{r eval = FALSE}
+devtools::install_github("LeireAbarrategui/epimutacionsData")
+```
 
-The package includes a small `GenomicRatioSet` class dataset (`methy` `r data("methy", package = "epimutacions")`) containing the DNA methylation profiles from a total of  `r ncol(methy)` individuals, `r ncol(methy[,methy$status == "case"])` cases and `r ncol(methy[,methy$status == "control"])` controls. The DNA methylation profiles were generated using the Illumina 450k Human Methylation BeadChip [@reproducibilityinfinium]. The data corresponds to GSE104812 cohort from  [Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/). It has been adapted for package usage. 
-
+Then, we need to load the package and create an `ExperimentHub` object: 
 
 ```{r}
-data("methy")
-methy
-
-table(methy$status)
+library(ExperimentHub)
+eh <- ExperimentHub()
+query(eh, c("epimutacionsData"))
 ```
 
-## IDAT files and RGChannelSet
 
-Additionally, as external data  4  case samples IDAT files from [GSE131350](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE131350) cohort are included.
+## IDAT files and reference panel 
+
+IDAT files directory in `epimutacionsData` package:
 
 ```{r IDAT files}
-baseDir <- system.file("extdata", package = "epimutacions")
-list.files(baseDir)
-targets <- minfi::read.metharray.sheet(baseDir)
+baseDir <- system.file("extdata", package = "epimutacionsData")
 ```
 
-The reference panel (`RGChannelSet` object) contains DNA methylation profiles of 22 whole cord blood samples from healthy children born via caesarian [(GEO: GSE127824)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE12782). This dataset is  available in the `ExperimentHub` package. 
+The reference panel can be found in `EH6691` record of the  `eh` object: 
 
+```{r message = FALSE}
+reference_panel <- eh[["EH6691"]]
+```
+
+## Methy {#methy}
+
+The `methy` is stored in `EH6690` record: 
+
+
+```{r message = FALSE}
+methy <- eh[["EH6690"]]
+```
+
+
+
+## Candidate regions {#candreg}
+
+In Illumina 450K array, probes are unequally distributed along the genome, limiting the number of regions that can fulfil the requirements to be considered an epimutation.  Thus, we have computed a dataset containing all the regions that could be candidates to become an epimutation.
+
+
+We used the clustering approach from bumphunter to define the candidate epimutations.  We defined a primary dataset with all the CpGs from the Illumina 450K array.  Then, we run bumphunter and selected those regions with at least 3 CpGs and a maximum distance of 1kb between them. As a result, we found 40,408 candidate epimutations. The function `epimutation()`  filters the identified epimutations using these candidate regions. 
+
+The following is the code used to identify the candidate epimutations in Illumina 450K array: 
+
+```{r eval = FALSE}
+library(minfi)
+# Regions 450K
+library(IlluminaHumanMethylation450kanno.ilmn12.hg19)
+data(Locations)
+
+### Select CpGs (names starting by cg) in autosomic chromosomes
+locs.450 <- subset(Locations, 
+                   grepl("^cg", rownames(Locations)) & chr %in% paste0("chr", 1:22))
+locs.450GR <- makeGRangesFromDataFrame(locs.450, start.field = "pos", 
+                                       end.field = "pos", strand = "*")
+locs.450GR <- sort(locs.450GR)
+mat <- matrix(0, nrow = length(locs.450GR), ncol = 2, 
+              dimnames = list(names(locs.450GR), c("A", "B")))
+
+## Set sample B to all 1
+mat[, 2] <- 1
+
+## Define model matrix
+pheno <- data.frame(var = c(0, 1))
+model <- model.matrix(~ var, pheno)
+
+## Run bumphunter
+bumps <- bumphunter(mat, design = model, pos = start(locs.450GR), 
+                    chr = as.character(seqnames(locs.450GR)),
+                    cutoff = 0.05)$table
+bumps.fil <- subset(bumps, L >= 3)
+```
+
+
+The candidate regions  can be found  in `EH6692` record of the  `eh` object: 
+
+
+```{r message = FALSE, eval = FALSE}
+candRegsGR <- eh[["EH6692"]]
+```
 
 
 # Preprocessing
 
-The normalization removes the unwanted variation caused by the batch effect when combining data from different sources. The preprocessing in `epimutacions` package is done by `epi_preprocess()` function. It contains 6 preprocessing methods  corresponding to minfi package [@aryee2014minfi], which can be selected by the user:
+The  `epi_preprocess()` function  allows calling the 6 preprocessing methods from `minfi` package [@aryee2014minfi]:
+
    
-
-
 +---------------+-----------------------------+----------------------------------------------------------------------+
 | Method        |  Function                   | Description                                                          |
 +===============+=============================+======================================================================+
@@ -175,7 +247,7 @@ The normalization removes the unwanted variation caused by the batch effect when
 Table: Preprocessing methods description
 \label{tab:prep_des}
 
-Those methods have unique parameters (table \ref{tab:prep_unique_parameter}) that can be defined through `norm_parameters()` function: 
+Each normalization approach has some unique parameters (table \ref{tab:prep_unique_parameter}) which can be modified through `norm_parameters()` function: 
 
 Table: Preprocessing methods unique parameters
 \label{tab:prep_unique_parameter}
@@ -209,49 +281,63 @@ Table: Preprocessing methods unique parameters
 +---------------+-----------------------------+------------------------------------------------------------------+
 
 
-
-The default settings for each method can be obtained by invoking  the function `norm_parameters()` with no arguments:
+We can obtain the default settings for each method by invoking  the function `norm_parameters()` with no arguments:
 
 ```{r}
 norm_parameters()
 ```
 
-However, to modify the parameters related to a  method you can do as the following example for `illumina` approach:
+However, we can modify the parameter(s) as the following example for `illumina` approach:
 
 ```{r}
 parameters <- norm_parameters(illumina = list("bg.correct" = FALSE))
 parameters$illumina$bg.correct
 ```
 
+We are going to preprocess the IDAT files and reference panel (\ref{datasets}). We need to specify the IDAT files directory and the reference panel in `RGChannelSet` format. As a result, we will obtain a `GenomicRatioSet` object containing the control and case samples: 
+
+```{r}
+GRset <- epi_preprocess(baseDir, reference_panel, pattern = "SampleSheet.csv")
+GRset
+```
+
+
 # Epimutations
 
 ## Epimutations detection
 
-The `epimutacions` package includes 6 methods for epivariants identification: (1) [Multivariate Analysis of variance (`manova`)](https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/manova), (2) [Multivariate Linear Model (`mlm`)](https://github.com/dgarrimar/mlm/blob/master/R/mlm.R), (3) [isolation forest (`isoforest`)](https://rdrr.io/cran/isotree/man/isolation.forest.html), (4) [robust mahalanobis distance  (`mahdistmcd`)](https://www.rdocumentation.org/packages/robustbase/versions/0.93-8/topics/covMcd) (5) `quantile` and (6) `beta`. 
+The function `epimutations()` includes 6 methods for epimutation identification: (1) Multivariate Analysis of variance (`manova`), (2) Multivariate Linear Model (`mlm`), (3) isolation forest (`isoforest`), (4) robust mahalanobis distance  (`mahdistmcd`) (5) `quantile` and (6) `beta`. 
 
-
-In the mentioned first 4 methods, firstly, Differentially Methylated Regions (DMRs) are identified using bump-hunter method [@jaffe2012bump]. Then, those DMRs are tested to identify regions with CpGs being outliers when comparing with the reference panel. However, `quantile` and `beta` do not identify outliers by filtering the DMRs. `quantile`  utilized a sliding window approach to individually compare the methylation value  in each proband against the reference panel. `Beta` used beta distribution to identify epivariants in the case sample. 
-
-To ilustrate multiple examples we are going to use `methy` dataset. Fristly, we are going to split the dataset in two subset: (1) cases (`case_samples`) and (2) controls (`control_samples`): 
+To illustrate the following examples we are going to use the dataset `methy` (section \ref{methy}). We need to separate the case and control samples: 
 
 ```{r}
 case_samples <- methy[,methy$status == "case"]
 control_samples <- methy[,methy$status == "control"]
 ```
 
-Then, we are going to identify epimutations in each case sample using one statistical approach at a time: 
+We can specify the chromosome or region to analyze which helps to reduce the execution time: 
 
-```{r, epimutations_detection, message=FALSE, warning=FALSE}
+```{r,  epi_mvo, message=FALSE, warning=FALSE}
 epi_mvo <- epimutations(case_samples, control_samples, method = "manova")
+```
+
+```{r, epi_method_examples, eval = FALSE}
 epi_ml <- epimutations(case_samples, control_samples, method = "mlm")
-epi_iso <- epimutations(case_samples, control_samples, method = "isoforest")
-epi_mcd <- epimutations(case_samples, control_samples, method = "mahdistmcd")
-epi_qtl <- epimutations(case_samples, control_samples, method = "quantile")
-epi_beta <- epimutations(case_samples, control_samples, method = "beta")
+epi_iso <- epimutations(case_samples, control_samples, method = "isoforest", 
+                        chr = "chr10", start = 100, end  = 10000)
+epi_mcd <- epimutations(case_samples, control_samples, method = "mahdistmcd", chr = "chr12")
+epi_qtl <- epimutations(case_samples, control_samples, method = "quantile", chr = "chr22")
+epi_beta <- epimutations(case_samples, control_samples, method = "beta", chr = "chr17")
 ```
 
 
+The function `epimutations_one_leave_out()` compared individual methylation profiles of a single
+sample (regardless if they are cases or controls) against all other samples from the same cohort. To use this function we do not need to split the dataset: 
 
+```{r eval = FALSE}
+#manova (default method)
+epi_mva_one_leave_out<- epimutations_one_leave_out(methy)
+```
 
 ## Unique parameters
 
@@ -283,13 +369,13 @@ Table: epimutation function approaches unique parameters
 
 
 
-Invoking `epi_parameters()` with no arguments returns a list of the default settings for each method: 
+`epi_parameters()` with no arguments, returns a list of the default settings for each method: 
 
 ```{r}
 epi_parameters()
 ```
 
-The set up of any parameter can be done as the following example of p-value cut-off for  `manova`: 
+The set up of any parameter can be done as the following example for  `manova`: 
 
 ```{r}
 parameters <- epi_parameters(manova = list("pvalue_cutoff" = 0.01))
@@ -299,7 +385,7 @@ parameters$manova$pvalue_cutoff
 
 ## Results description
 
-The `epimutations` function returns a `tibble` containing all the epivariants identified in the given case sample. In case no epimutation is found, a row containing the case sample information and missing values for each argument is returned. Table \ref{tab:output_description} describes each argument in the result data frame: 
+The `epimutations` function returns a data frame (tibble) containing all the epimutations identified in the given case sample. If no epimutation is found, the function returns a row containing the case sample information and missing values for all other arguments. The table \ref{tab:output_description} describes each argument: 
 
 
 Table: epimutation function output arguments description
@@ -350,19 +436,29 @@ Table: epimutation function output arguments description
 | `CRE_type`            | Type of cREs (cis-Regulatory Elements) as defined by ENCODE.                                                          |
 +-----------------------+-----------------------------------------------------------------------------------------------------------------------+
 
+As an example we are going to visualize the obtained results with MANOVA method  (`epi_mvo`): 
 
+```{r}
+dim(epi_mvo)
+class(epi_mvo)
+colnames(epi_mvo)
+head(as.data.frame(epi_mvo[,1:6]), 1)
+```
 
 ## Epimutations annotations
 
-The `epimutacions` package also includes the `annotate_epimutations()` function dedicated to enriching the epimutations identified by the previously described methods:
+The `annotate_epimutations()` function  enriches the identified epimutations. It includes information about GENECODE gene names, description of the regulatory feature provided by methylation consortium, the location of the CpG relative to the CpG island, OMIM accession and description number and Ensembl region id, coordinates, type and tissue:
 
 ```{r, ann, message=FALSE, tidy = TRUE}
 rst_mvo <- annotate_epimutations(epi_mvo)
 ```
 
-```{r ann results, eval = FALSE}
-rst_mvo[1:2, c(1, 12:14)]
+```{r}
+colnames(rst_mvo[2:3, c(1, 12:14)])
 ```
+
+```{r ann results, eval = FALSE}
+rst_mvo[c(1,29), c(1, 12:14)]```
 
 ```{r echo = FALSE}
 library(knitr)
@@ -370,62 +466,69 @@ kable(rst_mvo[c(1,29), c(1, 12:14)], caption = "epimutations annotation")
 ```
 
 
++---------------------------+-----------------------------------------------------------------------------------------+
+| Column name               | Description                                                                             |
++===========================+=========================================================================================+
+| `GencodeBasicV12_NAME`    | Gene names from the basic GENECODE build                                                |
++---------------------------+-----------------------------------------------------------------------------------------+
+| `Regulatory_Feature_Group`| Description of the regulatory feature provided by the Methylation Consortium            |
++---------------------------+-----------------------------------------------------------------------------------------+
+| `Relation_to_Island`      | The location of the CpG relative to the CpG island                                      |
++---------------------------+-----------------------------------------------------------------------------------------+
+| `OMIM_ACC` \              | OMIM accession and description number                                                   |
+| `OMIM_DESC`               |                                                                                         |
++---------------------------+-----------------------------------------------------------------------------------------+
+| `ensembl_reg_id` \        | The Ensembl region id, coordinates, type and tissue                                     |
+|`ensembl_reg_coordinates`\ |                                                                                         |
+|`ensembl_reg_type`\        |                                                                                         |
+|`ensembl_reg_tissues`      |                                                                                         |
++---------------------------+-----------------------------------------------------------------------------------------+
+
 ## Epimutation visualization
 
-The  visualization approach locates the epimutations along the genome. The function `plot_epimutations()` plots the methylation values of the  individual with the epimutation in red, the control samples in dashed black lines and population mean in blue (figure \ref{fig:plot_default}):  
+The `plot_epimutations()` function locates the epimutations along the genome.  It plots the methylation values of the case sample in red, the control samples in dashed black lines and population mean in blue(figure \ref{fig:plot_default}). 
 
 ```{r plot_default, fig.cap="beta values of case sample againts control samples \\label{fig:plot_default}"}
+knitr::opts_chunk$set(fig.pos = 'H')
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy)
 ```
 
-Furthermore, it includes the gene annotations in the regions in which the epivariation is located.  This can be achieved by using the argument  `gene_annot == TRUE` (figure \ref{fig:plot_mvo_genes_annot}): 
+If we set the argument `gene_annot == TRUE` the plot includes the gene annotations: 
+ (figure \ref{fig:plot_mvo_genes_annot}): 
 
 ```{r, plot_mvo_genes_annot, fig.cap="beta values of case sample againts control samples including UCSC gene annotation \\label{fig:plot_mvo_genes_annot}"}
+knitr::opts_chunk$set(fig.pos = 'H')
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy, genes_annot = TRUE)
 ```
 
-
-Also, it is possible to plot (figure \ref{fig:plot_mvo_regulation}) CpG islands and chromatin marks H3K4me3, H3K27me3  and H3K27ac by setting the argument `regulation = TRUE`:
+To  plot the chromatin marks H3K4me3, H3K27me3  and H3K27ac we need to specify the argument  `regulation = TRUE`(figure \ref{fig:plot_mvo_regulation}): 
 
 * **H3K4me3**: commonly associated with the activation of transcription of nearby genes.
 * **H3K27me3**: is used in epigenetics to look for inactive genes.
 * **H3K27ac**: is associated with the higher activation of transcription and therefore defined as an active enhancer mark
 
 
-```{r, plot_mvo_regulation, eval = FALSE}
+```{r, plot_mvo_regulation,  fig.cap = "beta values of case sample againts control samples including CpG islands  \\label{fig:plot_mvo_regulation}"}
+knitr::opts_chunk$set(fig.pos = 'H')
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy, regulation = TRUE)
 ```
 
-```{r plot_mvo_regulation_fig, echo=FALSE, fig.cap = "beta values of case sample againts control samples including CpG islands  \\label{fig:plot_mvo_regulation}", out.width = '90%', fig.align='center'}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/plot_regulation.JPG"))
-```
+# Results
 
-# Method validation
+## Simulations
 
-We validate our method (`epimutacions`) reproducing the results in the study [@garg2020survey]. 
+We explored the effect of sample size on the identification of 4 epimutations experimentally validated by Grag and colleagues [@garg2020survey].   We downloaded the data from [GEO](https://www.ncbi.nlm.nih.gov/geo/).  We accessed DNA methylation data from a total of 1, 417 individuals from [GSE51032](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE51032) and 
+[GSE111629](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi) cohorts. 
 
-## Data collection 
-
-The data were obtained from the study previously described [@garg2020survey].  The datasets were downloaded from [Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/).  We accessed DNA methylation data from a total 1, 417 individuals from [GSE51032](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE51032) and 
-[GSE111629](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi) cohorts. The DNA methylation profiles were generated using the Illumina 450k Human Methylation BeadChip.  
-
-The GSE51032 analysed primary cancers samples:  424 cancer free, 235 primary breast cancer, 166 
-primary colorectal cancer and 20 other primary cancers. The GSE111629 cohort 335 Parkinson’s disease and 237 control samples.  
-
-## Validation
-
-We evaluated the performance of the method using True Positive Rate (TPR), False Positive Rate (FPR) and accuracy. We used the TPR to measure the proportion of detected epivariations by the `epimutations` approach  present in the validated (table \ref{tab:table_validated}) by [@garg2020survey]. FPR to calculate the identified epimutations outside the once found in [@garg2020survey], whether validated or not. The accuracy measures the closeness of the detected epimutation to the validated regions. 
+We evaluated the performance of the methods using True Positive Rate (TPR), False Positive Rate (FPR) and accuracy. We used the TPR to measure the proportion of detected epimutations by our method present in the validated epimutations (table \ref{tab:table_validated}). The FPR computes the identified epimutations by our method that were not found by Grag and colleagues.  The accuracy measures the closeness of the epimutations detected by our methods to the validated epimutations. 
 
 
-We select samples differently depending on the study group and measure to compute. Control samples were selected randomly using different sample size: 20, 30, 40, 50, 60, 70, 80, 90 and 100. However, case samples were selected considering validated epimutations (for TPR and accuracy) or excluding epivariations found (for FPR) [@garg2020survey].  
+We selected control samples randomly using different sample size: 20, 30, 40, 50, 60, 70, 80, 90 and 100. We set as case samples the individuals containing the validated epimutations (table \ref{tab:table_validated}):  GSM1235784 sample from GSE51032 cohort; and GSM3035933, GSM3035791, GSM3035807 and GSM3035685 samples from GSE111629. We utilized those case samples to compute TPR and accuracy. However, we measured the FPR selecting all the case samples with no epimutations identified by Grag and colleagues. 
 
-
-The validated epimutations in table \ref{tab:table_validated} were only present on 5 individuals: GSM1235784 from GSE51032 cohort and GSM3035933, GSM3035791, GSM3035807 and GSM3035685 from GSE111629. Therefore, they were established as case samples when computing TPR and accuracy. Nevertheless, we compute FPR excluding the samples containing at least one epimutation found by [@garg2020survey].  For the remaining case samples, 4 were selected randomly in each execution.
-
-We executed 100 times the same process for each control sample size. We defined for the analysis regions of $\approx$ 20 kb containing $\ge$ 3 GpGs. 
+We analyzed regions of $\approx$ 20 kb containing $\ge$ 3 GpGs. We executed 100 times the same process for each control sample size.  
 
 ```{r tableEpiValidated, echo=FALSE, tab.cap='(ref:tableEpiValidated)'}
-load(file.path(getwd(),"hpc/inputs/epi_validated.rda"))
+load("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/hpc/inputs/epi_validated.rda")
 epi_validated <- as.data.frame(epi_validated)
 epi_validated$samples <- c("GSM1235784/GSM3035791",
                            "GSM3035685",
@@ -435,48 +538,71 @@ colnames(epi_validated) <- c("Chromosome", "Start", "End", 	"Width", "Strand", "
 knitr::kable(epi_validated, format = "markdown", caption = "validated epimutations (Garg et al. 2020).\\label{tab:table_validated}")
 ```
 
-Additionally, we have plotted the methylation values of the samples in the regions where the validated epimutations were found.
- 
+Figures \ref{fig:graph_GSM1235784}, \ref{fig:graph_GSM3035685}, \ref{fig:graph_GSM3035791}, \ref{fig:graph_GSM3035791.2}, \ref{fig:graph_GSM3035807} and \ref{fig:graph_GSM3035933}  illustrate the  methylation values for each validated epimutation. The y-axis represents the methylation value and the x-axis the location of the epimutation in the genome.  We represented the case sample in red, the control samples in dashed black lines and population mean in blue: 
+
 ```{r graph_GSM1235784, echo = FALSE, fig.cap = "GSE51032 cohort samples in the region chr17:46018654-46019184", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM1235784_chr17-46018654-46019184.png"))
+knitr::include_graphics(file.path(getwd(),"fig/GSM1235784_chr17-46018654-46019184.png"))
 ``` 
 
 ```{r graph_GSM3035685, echo = FALSE, fig.cap = "GSE111629 cohort samples in the region chr19:11199851-11200146", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035685_chr19-11199851-11200146.png"))
+knitr::include_graphics(file.path(getwd(),"fig/GSM3035685_chr19-11199851-11200146.png"))
 ``` 
 
 ```{r graph_GSM3035791, echo = FALSE, fig.cap = "GSE111629 cohort samples in the region chr5:67584194-67584380", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035791_chr5-67584194-67584380.png"))
+knitr::include_graphics(file.path(getwd(),"fig/GSM3035791_chr5-67584194-67584380.png"))
 ``` 
 
 ```{r graph_GSM3035791.2, echo = FALSE, fig.cap = "GSE111629 cohort samples in the region chr17:46018654-46019184", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035791_chr17-46018654-46019184.png"))
+knitr::include_graphics(file.path(getwd(),"fig/GSM3035791_chr17-46018654-46019184.png"))
 ``` 
 
 ```{r graph_GSM3035807, echo = FALSE, fig.cap = "GSE111629 cohort samples in the region chr5:67583972-67584380", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035807_chr5-67583972-67584380.png"))
+knitr::include_graphics(file.path(getwd(),"fig/GSM3035807_chr5-67583972-67584380.png"))
 ``` 
 
 ```{r graph_GSM3035933, echo = FALSE, fig.cap = "GSE111629 cohort samples in the region chr5:10249761-10251252", fig.align = 'center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"vignette/fig/GSM3035933_chr5-10249761-10251252.png"))
+knitr::include_graphics(file.path(getwd(),"fig/GSM3035933_chr5-10249761-10251252.png"))
 ``` 
 
-## Results
+The figures  \ref{fig:graph_GSE51032}, \ref{fig:graph_GSE111629_1}, \ref{fig:graph_GSE111629_2}, \ref{fig:graph_GSE111629_3} and \ref{fig:graph_GSE111629_4}  represent the TPR, accuracy and FPR obtained for GSE51032 and GSE111629 cohorts respectively. We separated the results by cohort, case sample (containing the validated epimutation), method and  sample size. 
 
-We compared GSM1235784 case sample against randomly selected control samples from GSE51032. furthermore,  GSM3035933, GSM3035791, GSM3035807 and GSM3035685 case samples were studied against controls from GSE111629 specifying a region of 20 kb and $\ge$ 3 GpGs. 
 
-We obtained similar results in both cohorts. We observed that the methods manova, mahalanobis distance, multivariate linear models, quantile and beta identified the validated epimutations with a TPR of $>99\%$ even if the control sample is small. However,  the TPR in isolation forest increases together with the number of control samples obtaining a TPR $\ge$ 75 with 50 control samples or more. Regarding the accuracy, all the statistical  approaches detect the epivariants with $>80\%$ of closeness to the validated epimutations. 
+We observed similar results for TPR and FPR in both cohorts. The methods  manova, mahalanobis distance, mlm, quantile and beta identified the epimutations even if the sample size is small. The TPR in isolation forest increases together with the sample size. However, the accuracy is high even if the sample size is small in this method as well as in manova, mahalanobis distance and  mlm. In  beta and quantile the accuracy changes  depending on the cohort and the analyzed region. Isolation forest,  mlm, manova  and mahalanobis distance  identified in GSE111629 cohort  respectively $\approx$ 10$\%$, 7$\%$, 5$\%$  and 3$\%$   epimutations that were not present in Grag and colleagues. However, in GSE51032 dataset 40$\%$, 30$\%$, 20$\%$  and 10$\%$. The method quantile did not found new epimutations in GSE51032. For GSE111629 cohort the proportion (< 2$\%$) of new epimutations in beta and quantile is lower than in the other methods.  
 
-We detected possible epivariations outside the epimutations found by [@garg2020survey] selecting random regions of 20 kb and $\ge$ 3 GpGs for both, control and case samples. We compared individual methylation profiles of a single case 
-sample against control samples. We observed that in both cohorts and for every approach the FPR value was minimum $<0.01\%$. 
+
+
+```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
+
+knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png")
+```
+
+
+```{r graph_GSE111629_1, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
+knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png")
+```
+
+```{r graph_GSE111629_2, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:67583971-67584381", fig.align='center', fig.pos = "H"}
+knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png")
+```
+
+```{r graph_GSE111629_3, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr17:46018653-46019185", fig.align='center', fig.pos = "H"}
+knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png")
+```
+
+```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center', fig.pos = "H"}
+knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png")
+```
+
 
 ```{r table_GSE51032, echo = FALSE}
 library(dplyr)
-load("result_files/3-TPR_FPR_accuracy/TPR_FPR_accuracy_GSE51032.rda")
+load("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/3-TPR_FPR_accuracy/TPR_FPR_accuracy_GSE51032.rda")
 df <- df$chr17_46018653_46019185
 df[,3:5] <- apply(df[,c(-1, -2)], 2,as.numeric)
+#kableExtra::kbl(list(df[1:30,], df[31:54,]), caption = "GSE51032 cohort TPR, FPR and accuracy")
 kableExtra::kbl(list(df[1:30,], df[31:54,])) %>%
-  kableExtra::kable_paper("striped", full_width = F)
+  kableExtra::kable_paper("striped", full_width = F) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position")
 #kableExtra::kbl(df[,-2], align = 'c') %>%
 #    kableExtra::kable_paper("striped", full_width = F) %>%
 #    kableExtra::pack_rows(index = c("n20" = 6, "n30" = 6, "n40" = 6, 
@@ -486,19 +612,16 @@ kableExtra::kbl(list(df[1:30,], df[31:54,])) %>%
 #knitr::kable(mean_table, align = "lccrr", caption = "`epimutations` function TPR, FPR and accuracy using GSE51032 cohort")
 ```
 
-
-
-```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE51032_chr17_46018653_46019185.png"))
-```
-
 ```{r table_GSE111629, echo = FALSE, results='asis'}
-load("result_files/3-TPR_FPR_accuracy/TPR_FPR_accuracy_GSE111629.rda")
+load("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/3-TPR_FPR_accuracy/TPR_FPR_accuracy_GSE111629.rda")
 df <- as.data.frame(data.table::rbindlist(df))
 df[,3:5] <- apply(df[,c(-1, -2)], 2,as.numeric)
 mean_table <- aggregate( .~ method + n, data = df, FUN= "mean")
+#kableExtra::kbl(list(mean_table[1:30,], mean_table[31:54,]), 
+                #caption = "GSE111629 cohort TPR, FPR and accuracy. The measures shown are the mean for all the #validated epimutations identified.")
 kableExtra::kbl(list(mean_table[1:30,], mean_table[31:54,])) %>%
-  kableExtra::kable_paper("striped", full_width = F)
+  kableExtra::kable_paper("striped", full_width = F) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position")
 #kableExtra::kbl(mean_table, align = 'c') %>%
 #    kableExtra::kable_paper("striped", full_width = F) %>%
 #    kableExtra::pack_rows(index = c("n20" = 6, "n30" = 6, "n40" = 6, 
@@ -508,20 +631,21 @@ kableExtra::kbl(list(mean_table[1:30,], mean_table[31:54,])) %>%
 #knitr::kable(mean_table, align = "lccrr", caption = "`epimutations` function TPR, FPR and accuracy for GSE111629 cohort. The measures shown are the mean for all the validated epimutations identified.")
 ```
 
-```{r graph_GSE111629_1, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr5_10249760_10251253.png"))
+## Methods testing
+
+We run the six implemented methods in `epimutacions`  and the  Perl script (quantile-perl) from  Garg and colleagues. We implemented that script in R (Quantile-R) with a small difference.  Quantile-R excludes the target sample when computing the methylation quantiles while in quantile-perl the quantiles are computed including the target sample. We used GSE84727 dataset from GEO which  contains a total of  847 whole blood adults samples, 414 schizophrenia cases and 433 controls. This dataset have been previously analyzed by Garg and colleagues. 
+
+The methods based in bumphunter detected epimutations in almost all samples.  However, beta identified epimutations in $\approx$ 75$\%$ of the samples and quantile in $\approx$ 33$\%$  (figure \ref{fig:overlap_methods}). All the epimutations detected by Garg and colleagues are found at least by one of our methods. Isolation forest, mlm and manova shared >80$\%$ of the epimutations detected. They also identified  most of the epimutations found by beta, being only  10$\%$ of the epimutations specific to beta. Nevertheless, mahalanobis distance presented more divergent results, the $\approx$ 38$\%$ of the detected epimutations  are not present in the other methods. 
+
+Manova, mlm and isolation forest detected several epimutations per individual. Quantile found $\leq$ 1 epimutation per individual. However,  beta and mahalanobis methods identified few epimutations (figure \ref{fig:prop_individuals}).  
+
+```{r overlap_methods, echo = FALSE, fig.cap = "Overlap between methods", fig.align='center'}
+knitr::include_graphics(file.path(getwd(),"fig/methods.png"))
 ```
 
-```{r graph_GSE111629_2, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:67583971-67584381", fig.align='center'}
-knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr5_67583971_67584381.png"))
-```
-
-```{r graph_GSE111629_3, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr17:46018653-46019185", fig.align='center'}
-knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr17_46018653_46019185.png"))
-```
-
-```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center'}
-knitr::include_graphics(file.path(getwd(),"result_files/4-Graph/GSE111629_chr19_11199850_11200147.png"))
+ 
+```{r prop_individuals, echo = FALSE, fig.cap = "Proportion of individuals with epimutations", fig.align='center'}
+knitr::include_graphics(file.path(getwd(),"fig/individuals.png"))
 ```
 
 
@@ -544,5 +668,11 @@ All the team members of *Project #5* for the contribution to this package:
 | Raquel | Manzano | 0000-0002-5124-8992 | Cancer Research UK Cambridge Institute; University of Cambridge, Cambridge, United Kingdom | Reporting |
 | Margherita | Mutarelli | 0000-0002-2168-5059 | Institute of Applied Sciences and Intelligent Systems (ISASI-CNR) | Validation |
 | Carlos | Ruiz-Arenas | 0000-0002-6014-3498 | Centro de Investigación Biomédica en Red de Enfermedades Raras (CIBERER), Barcelona, Spain; Universitat Pompeu Fabra (UPF), Barcelona, Spain | Reporting |
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
 
 # References
