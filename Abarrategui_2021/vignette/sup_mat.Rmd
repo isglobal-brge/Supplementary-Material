@@ -15,7 +15,7 @@ header-includes:
   - \usepackage{floatrow}
   - \floatsetup[figure]{capposition=top}
 
-abstract: "Epimutations are rare alterations in the methylation pattern at specific loci. Have been demonstrated that epimutations could be the causative factor of some genetic diseases. Nonetheless, no standard methods are available to detect and quantify these alterations.  We have developed `epimutacions` package. The package implements 6 approaches to identify epimutations in genome-wide DNA methylation microarrays data. The document describes, package installation; data loading and preprocessing;  epimutation identification, annotation and visualization; and GEO datasets simulations results."
+abstract: "Epimutations are rare alterations in the methylation pattern at specific loci. Have been demonstrated that epimutations could be the causative factor of some genetic diseases. Nonetheless, no standard methods are available to detect and quantify these alterations.  We have developed `epimutacions` package which implements 6 approaches to identify epimutations in Illumina DNA methylation microarrays. The document describes, package installation; data loading and preprocessing;  epimutation identification, annotation and visualization; and GEO datasets results."
 
 output:
   pdf_document: 
@@ -45,11 +45,11 @@ knitr::opts_chunk$set(comment="", warning = FALSE, message = FALSE, cache = TRUE
 
 We created `epimutacions` R/Biconductor package. 
 It implements 6 outlier detection statistical methods to identify epimutations 
-in Illumina DNA methylation microarray data. `Quantile` and `beta` methods 
+in Illumina DNA methylation microarray data. `Quantile` [@garg2020survey] and `beta` methods 
 test outliers for every genomic location and then group the outlier CpGs into regions. 
-`Manova`, `mlm`, `iForest` and `mahdist` test if the differentially methylated regions identified by bumphunter are outliers. The `Quantile` and `Manova` methods were previously described in the literature. 
+`Manova` [@friedrich2017package], `mlm` [@martin2020multivariate], `iForest` [@cortes2021package] and `mahdist` [@maechler2021package] test if the differentially methylated regions identified by bumphunter [@jaffe2012bump] are outliers. The `Quantile` [@barbosa2018identification; @garg2020survey] and `Manova` [@aref2019] methods were previously described in the literature. 
 
-We used two different strategies to assess the performance of our methods and compare them with the methods available in the `ramr` package. We explored the effect of sample size on the identification of 4 epimutations experimentally validated by Grag and colleagues. We calculated the epimutations per individual and epimutations overlap between the methods. 
+We used two different strategies to assess the performance of our methods and compare them with the methods available in the `ramr` package. We explored the effect of sample size on the identification of 4 epimutations experimentally validated by Garg and colleagues. We calculated the epimutations per individual and epimutations overlap between the methods. 
 The epimutacions package allows raw microarray intensities and preprocessed Illumina methylation arrays. To convert the raw microarray intensities into beta values we can call the 6 normalization methods implemented in the minfi package (epi_preprocess). The package provides tools for the epimutations annotation and visualization. 
 
 The name of the package is `epimutacions` (pronounced `ɛ pi mu ta 'sj ons`) which means epimutations in Catalan, a language from the northeast of Spain.
@@ -66,8 +66,13 @@ knitr::include_graphics(file.path(getwd(),"fig/implementation.png"))
 
 ## Installing the package
 
-```{r, eval=FALSE}
-devtools::install_github("isglobal-brge/epimutacions")
+The `epimutacions` package can be installed using the following code: 
+
+```{r eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("epimutacions")
 ```
 
 
@@ -78,7 +83,7 @@ library(epimutacions)
 ```
 
 
-## Quick start
+# Quick start
 
 The workflow in figure \ref{fig:workflow} explains the main analysis in the `epimutacions` package. 
 
@@ -89,7 +94,7 @@ The package allows two different types of inputs:
 * (2) `GenomicRatioSet` object containing case and control samples.  
 
 
-The normalization (`epi_preprocess()`) converts the raw microarray intensities into usable methylation measurement ($\beta$ values at CpG locus level). As a result, we obtain a  `GenomicRatioSet` object, which can be used as `epimutations()` function input.  The data should contain information about \beta values of CpG sites, phenotype and feature data.   
+The normalization (`epi_preprocess`) converts the raw microarray intensities into usable methylation measurement ($\beta$ values at CpG locus level). As a result, we obtain a  `GenomicRatioSet` object, which can be used as `epimutations()` function input.  The data should contain information about \beta values of CpG sites, phenotype and feature data.   
 
 ```{r workflow, echo=FALSE, fig.cap="Allowed data formats, normalization and input types", out.width = '90%', fig.align='center'}
 knitr::include_graphics(file.path(getwd(),"fig/workflow.png"))
@@ -116,7 +121,10 @@ BiocManager::install("ExperimentHub")
 ```
 
 ```{r eval = FALSE}
-devtools::install_github("LeireAbarrategui/epimutacionsData")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("epimutacionsData")
 ```
 
 Then, we need to load the package and create an `ExperimentHub` object: 
@@ -202,7 +210,7 @@ candRegsGR <- eh[["EH6692"]]
 
 # Preprocessing
 
-The  `epi_preprocess()` function  allows calling the 6 preprocessing methods from `minfi` package [@aryee2014minfi]:
+The  `epi_preprocess` function  allows calling the 6 preprocessing methods from `minfi` package [@aryee2014minfi]:
 
    
 +---------------+-----------------------------+----------------------------------------------------------------------+
@@ -267,7 +275,7 @@ Table: Preprocessing methods unique parameters
 +---------------+-----------------------------+------------------------------------------------------------------+
 
 
-We can obtain the default settings for each method by invoking  the function `norm_parameters()` with no arguments:
+We can obtain the default settings for each method by invoking  the function `norm_parameters` with no arguments:
 
 ```{r}
 norm_parameters()
@@ -292,7 +300,7 @@ GRset
 
 ## Epimutations detection
 
-The function `epimutations()` includes 6 methods for epimutation identification: (1) Multivariate Analysis of variance (`manova`), (2) Multivariate Linear Model (`mlm`), (3) isolation forest (`isoforest`), (4) robust mahalanobis distance  (`mahdistmcd`) (5) `quantile` and (6) `beta`. 
+The function `epimutations` includes 6 methods for epimutation identification: (1) Multivariate Analysis of variance (`manova`), (2) Multivariate Linear Model (`mlm`), (3) isolation forest (`isoforest`), (4) robust mahalanobis distance  (`mahdistmcd`) (5) `quantile` and (6) `beta`. 
 
 To illustrate the following examples we are going to use the dataset `methy` (section \ref{methy}). We need to separate the case and control samples: 
 
@@ -327,7 +335,7 @@ epi_mva_one_leave_out<- epimutations_one_leave_out(methy)
 
 ## Unique parameters
 
-The `epi_parameters()` function  is  useful to set the individual parameters for each approach. The arguments are described in table \ref{tab:epi_unique_parameter}: 
+The `epi_parameters` function  is  useful to set the individual parameters for each approach. The arguments are described in table \ref{tab:epi_unique_parameter}: 
 
 Table: epimutation function approaches unique parameters
 \label{tab:epi_unique_parameter}
@@ -355,7 +363,7 @@ Table: epimutation function approaches unique parameters
 
 
 
-`epi_parameters()` with no arguments, returns a list of the default settings for each method: 
+`epi_parameters` with no arguments, returns a list of the default settings for each method: 
 
 ```{r}
 epi_parameters()
@@ -433,7 +441,7 @@ head(as.data.frame(epi_mvo[,1:6]), 1)
 
 ## Epimutations annotations
 
-The `annotate_epimutations()` function  enriches the identified epimutations. It includes information about GENECODE gene names, description of the regulatory feature provided by methylation consortium, the location of the CpG relative to the CpG island, OMIM accession and description number and Ensembl region id, coordinates, type and tissue:
+The `annotate_epimutations` function  enriches the identified epimutations. It includes information about GENECODE gene names, description of the regulatory feature provided by methylation consortium, the location of the CpG relative to the CpG island, OMIM accession and description number and Ensembl region id, coordinates, type and tissue:
 
 ```{r, ann, message=FALSE, tidy = TRUE}
 rst_mvo <- annotate_epimutations(epi_mvo)
@@ -472,20 +480,28 @@ kable(rst_mvo[c(1,29), c(1, 12:14)], caption = "epimutations annotation")
 
 ## Epimutation visualization
 
-The `plot_epimutations()` function locates the epimutations along the genome.  It plots the methylation values of the case sample in red, the control samples in dashed black lines and population mean in blue(figure \ref{fig:plot_default}). 
+The `plot_epimutations` function locates the epimutations along the genome.  It plots the methylation values of the case sample in red, the control samples in dashed black lines and population mean in blue(figure \ref{fig:plot_default}). 
 
-```{r plot_default, fig.cap="beta values of case sample againts control samples \\label{fig:plot_default}"}
+```{r, plot_default, eval = FALSE}
 knitr::opts_chunk$set(fig.pos = 'H')
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy)
 ```
 
+```{r, fig_plot_default, echo = FALSE, fig.cap = "beta values of case sample againts control samples \\label{fig:plot_default}", fig.align = 'center', fig.pos = "H"}
+knitr::include_graphics(file.path(getwd(),"fig/plot_example_beta_values.PNG"))
+``` 
+
 If we set the argument `gene_annot == TRUE` the plot includes the gene annotations: 
  (figure \ref{fig:plot_mvo_genes_annot}): 
 
-```{r, plot_mvo_genes_annot, fig.cap="beta values of case sample againts control samples including UCSC gene annotation \\label{fig:plot_mvo_genes_annot}"}
+```{r, plot_genes_annot, eval = FALSE}
 knitr::opts_chunk$set(fig.pos = 'H')
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy, genes_annot = TRUE)
 ```
+
+```{r, fig_plot_genes_annot, echo = FALSE, fig.cap = "beta values of case sample againts control samples including UCSC gene annotation \\label{fig:plot_mvo_genes_annot}", fig.align = 'center', fig.pos = "H"}
+knitr::include_graphics(file.path(getwd(),"fig/plot_example_beta_values_UCSC.PNG"))
+``` 
 
 To  plot the chromatin marks H3K4me3, H3K27me3  and H3K27ac we need to specify the argument  `regulation = TRUE`(figure \ref{fig:plot_mvo_regulation}): 
 
@@ -494,10 +510,15 @@ To  plot the chromatin marks H3K4me3, H3K27me3  and H3K27ac we need to specify t
 * **H3K27ac**: is associated with the higher activation of transcription and therefore defined as an active enhancer mark
 
 
-```{r, plot_mvo_regulation,  fig.cap = "beta values of case sample againts control samples including CpG islands  \\label{fig:plot_mvo_regulation}"}
+```{r, plot_mvo_regulation, eval = FALSE}
 knitr::opts_chunk$set(fig.pos = 'H')
 plot_epimutations(as.data.frame(epi_mvo[1,]), methy, regulation = TRUE)
 ```
+
+```{r, fig_plot_genes_annot, echo = FALSE, fig.cap = "beta values of case sample againts control samples including CpG islands  \\label{fig:plot_mvo_regulation}", fig.align = 'center', fig.pos = "H"}
+knitr::include_graphics(file.path(getwd(),"fig/plot_example_beta_Values_ucsc_cpg_island.PNG"))
+``` 
+
 
 # Results
 
