@@ -537,11 +537,13 @@ We analyzed regions of $\approx$ 20 kb containing $\ge$ 3 GpGs. We executed 100 
 ```{r tableEpiValidated, echo=FALSE, tab.cap='(ref:tableEpiValidated)'}
 load("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/hpc/inputs/epi_validated.rda")
 epi_validated <- as.data.frame(epi_validated)
-epi_validated$samples <- c("GSM1235784/GSM3035791",
-                           "GSM3035685",
-                           "GSM3035933", 
-                           "GSM3035791/GSM3035807")
-colnames(epi_validated) <- c("Chromosome", "Start", "End", 	"Width", "Strand", "Samples")
+epi_validated <- epi_validated[c(1,1,2,3,4,4),]
+epi_validated$delta_beta <- c(0.253, 0.237, 0.185, 0.604, 0.0703, 0.231)
+epi_validated$samples <- c("GSM1235784", "GSM3035791",
+                           "GSM3035685", "GSM3035933",
+                           "GSM3035791", "GSM3035807")
+epi_validated <- epi_validated[,c(7,1:6)]
+colnames(epi_validated) <- c("Samples", "Chromosome", "Start", "End", 	"Width", "Strand", "Delta-beta")
 knitr::kable(epi_validated, format = "markdown", caption = "validated epimutations (Garg et al. 2020).\\label{tab:table_validated}")
 ```
 
@@ -571,34 +573,6 @@ knitr::include_graphics(file.path(getwd(),"fig/GSM3035807_chr5-67583972-67584380
 knitr::include_graphics(file.path(getwd(),"fig/GSM3035933_chr5-10249761-10251252.png"))
 ``` 
 
-The figures  \ref{fig:graph_GSE51032}, \ref{fig:graph_GSE111629_1}, \ref{fig:graph_GSE111629_2}, \ref{fig:graph_GSE111629_3} and \ref{fig:graph_GSE111629_4}  represent the TPR, accuracy and FPR obtained for GSE51032 and GSE111629 cohorts respectively. We separated the results by cohort, case sample (containing the validated epimutation), method and  sample size. 
-
-
-We observed similar results for TPR and FPR in both cohorts. The methods  manova, mahalanobis distance, mlm, quantile and beta identified the epimutations even if the sample size is small. The TPR in isolation forest increases together with the sample size. However, the accuracy is high even if the sample size is small in this method as well as in manova, mahalanobis distance and  mlm. In  beta and quantile the accuracy changes  depending on the cohort and the analyzed region. Isolation forest,  mlm, manova  and mahalanobis distance  identified in GSE111629 cohort  respectively $\approx$ 10$\%$, 7$\%$, 5$\%$  and 3$\%$   epimutations that were not present in Grag and colleagues. However, in GSE51032 dataset 40$\%$, 30$\%$, 20$\%$  and 10$\%$. The method quantile did not found new epimutations in GSE51032. For GSE111629 cohort the proportion (< 2$\%$) of new epimutations in beta and quantile is lower than in the other methods.  
-
-
-
-```{r graph_GSE51032, echo = FALSE, fig.cap="epimutations performance for GSE51032 cohort detecting the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE51032_chr17_46018653_46019185.png")
-```
-
-
-```{r graph_GSE111629_1, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:10249760-10251253", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_10249760_10251253.png")
-```
-
-```{r graph_GSE111629_2, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:67583971-67584381", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr5_67583971_67584381.png")
-```
-
-```{r graph_GSE111629_3, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr17:46018653-46019185", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr17_46018653_46019185.png")
-```
-
-```{r graph_GSE111629_4, echo = FALSE, fig.cap="epimutations performance using GSE111629 cohort to detect the epivariation located in chr5:11199850-11200147", fig.align='center', fig.pos = "H"}
-knitr::include_graphics("C:/Users/nla94/Documents/GitHub/Supplementary-Material/Abarrategui_2021/result_files/4-Graph/GSE111629_chr19_11199850_11200147.png")
-```
 
 
 ```{r table_GSE51032, echo = FALSE}
