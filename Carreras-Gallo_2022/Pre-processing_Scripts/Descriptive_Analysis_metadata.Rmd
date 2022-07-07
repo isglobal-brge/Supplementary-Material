@@ -1,0 +1,637 @@
+---
+title: "Descriptive Analysis Metadata"
+author:
+  - name: Natàlia Carreras-Gallo
+    affiliation: 
+    - Barcelona Institute for Global health (ISGlobal), Barcelona, Spain
+    email: natalia.carreras@isglobal.org
+  - name: Juan R. González
+    affiliation:
+    - Barcelona Institute for Global health (ISGlobal), Barcelona, Spain
+    - Centro de Investigación Biomédica en Red en Epidemiología y Salud Pública (CIBERESP), Madrid, Spain
+    - Department of Mathematics, Universitat Autònoma de Barcelona, Bellaterra, Spain
+    email: juanr.gonzalez@isglobal.org
+date: '`r Sys.Date()`'
+output: 
+  BiocStyle::html_document:
+    number_sections: true
+    toc: yes
+    fig_caption: yes
+    toc_float: yes
+    caption: yes
+vignette: >
+    %\VignetteIndexEntry{Vignette Title}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      results = 'asis',     # Can also be set at chunk level
+                      comment = NA,
+                      prompt  = FALSE,
+                      cache   = FALSE)
+summarytools::st_options(plain.ascii = FALSE,       # Always use in Rmd documents
+           style       = "rmarkdown", # Always use in Rmd documents
+           subtitle.emphasis = FALSE,
+           descr.silent = TRUE) # Improves layout w/ some themes
+```
+
+# Metadata Overview
+
+## Data loading
+
+Load the required libraries and restrict the number of digits to 3:
+
+```{r libs, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(knitr)
+library(readxl)
+library(writexl)
+library(summarytools)
+
+options(digits=3)
+`%notin%` <- Negate(`%in%`)
+```
+
+Set working directory and load data:
+
+```{r data, message=FALSE}
+#PRBB
+PatientMetaData <- read_csv("G:/TruDiagnostic/metadata/PatientMetaData_041322.csv")
+PopuMetaData <- read_csv("G:/TruDiagnostic/metadata/PopulationData_031522.csv")
+```
+
+## Data dimensions
+
+```{r dim, echo=FALSE}
+colnames(PopuMetaData) <- str_replace_all(colnames(PopuMetaData), pattern=" ", repl="")
+list <- list(PatientMetaData,PopuMetaData)
+df_dim <- data.frame(matrix(ncol = 2, nrow = 3))
+colnames(df_dim) <- c("IDs","Variables")
+rownames(df_dim) <- c("Patient Metadata","Population metadata","Intersect")
+for (i in 1:length(list)){
+  df_dim[i,1] <- nrow(list[[i]])
+  df_dim[i,2] <- ncol(list[[i]])
+}
+df_dim[3,1] <- length(intersect(list[[1]]$PatientID,list[[2]]$PatientID))
+df_dim[3,2] <- length(intersect(colnames(list[[1]]),colnames(list[[2]])))
+
+kable(df_dim, caption="Number of IDs and variables for each dataset.", align=rep('c', 5))
+```
+
+The variables that are present in all the datasets are the PatientID (individual code for each idat file) and PID (individual code for each participant). These variables will help us to join the information from different datasets. In particular, we are interested in all the variables from the Patient Metadata and 4 variables (Decimal Chronological Age, Collection Date, Date of Birth, and Telomere Values) from the Population Metadata.
+
+First, we create a new object (metadata) where we include the individuals that have Patient Metadata and Population Metadata.
+
+```{r dim_selected}
+metadata <- PatientMetaData[PatientMetaData$PatientID%in%PopuMetaData$PatientID,]
+```
+
+Second, we include the 4 variables from the Population Metadata in this dataset.
+
+```{r join}
+metadata <- merge(metadata,PopuMetaData[,c("PatientID","DecimalChronologicalAge","TelomereValues","CollectionDate","DateofBirth")],by="PatientID")
+```
+
+The variables contained in the metadata file are the following:
+
+```{r vars, echo=FALSE}
+df <- data.frame(colnames(metadata))
+colnames(df) <- "Variable"
+
+#Include class type and examples
+df$Class <- NA
+df$Examples <- NA
+
+for(i in 1:ncol(metadata)){
+  a <- metadata[[i]]
+  cl <- class(a)
+  df$Class[i] <- cl
+  if (cl=="character" | cl=="factor" | cl=="Date" | cl=="logical"){
+    df$Examples[i] <- paste(na.omit(unique(a[!is.na(a)])[1:3]),collapse=" / ")
+  }
+  if (cl=="numeric"){
+    mean <- round(mean(a, na.rm = T))
+    range <- paste(round(range(a, na.rm = T),digits=2),collapse="-")
+    df$Examples[i] <- paste0(mean," (",range,")")
+  }
+}
+
+kable(df, caption="Variables contained in the original metadata. Three examples for the character strings and mean, minimum, and maximum for the numeric strings.", align=rep('c', 5))
+```
+
+## Data transformation
+
+First, we change the variable names by replacing the spaces " ", slashes "/", and dashes "-" with a low bar "_". We also remove the question mark  "?" at the end of the variable name and we change some variables for a shorter name.
+
+```{r transform}
+colnames(metadata) <- gsub(" ", "_", colnames(metadata), fixed = TRUE)
+colnames(metadata) <- gsub("/", "_", colnames(metadata), fixed = TRUE)
+colnames(metadata) <- gsub("-", "_", colnames(metadata), fixed = TRUE)
+colnames(metadata) <- gsub("?", "", colnames(metadata), fixed = TRUE)
+
+colnames(metadata)[which(names(metadata) == "Skin_&_Hair")] <- "Skin_Hair"
+colnames(metadata)[which(names(metadata) == "Do_you_take_any_of_the_Following_nutritional_Supplements")] <- "Nutritional_Supplements"
+colnames(metadata)[which(names(metadata) == "Do_you_take_any_of_the_following_supplements_or_medications")] <- "Supplements_Medication"
+colnames(metadata)[which(names(metadata) == "Pack_Years_(If_smoker)")] <- "Pack_Years_Smoker"
+colnames(metadata)[which(names(metadata) == "Actively_engage_in_anti-aging_interventions")] <- "Anti_Aging"
+colnames(metadata)[which(names(metadata) == "How_often_do_you_use_recreational_Drugs")] <- "Recreational_Drug_Frequency"
+colnames(metadata)[which(names(metadata) == "What_does_your_diet_mostly_consist_of")] <- "Main_Diet"
+colnames(metadata)[which(names(metadata) == "How_often_do_you_exercise_per_week")] <- "Exercise_per_week"
+colnames(metadata)[which(names(metadata) == "High_Blood_Pressure")] <- "High_Blood_pressure_parents"
+colnames(metadata)[which(names(metadata) == "Alcohol_Use(times_per_week)")] <- "Alcohol_Use_per_week"
+```
+
+Second, we transform some character variables to factor and we sort the levels.
+
+```{r levels}
+metadata$Caffeine_Use <- factor(metadata$Caffeine_Use,
+                levels = c("Never", "On sepecial occasions", "Once per week","3-5 times per week","Regularly"))
+metadata$Tobacco_Use <- factor(metadata$Tobacco_Use,
+                levels = c("None", "Less than 1 cigarette per week","Less than 1 cigarette per day", "1-5 cigarettes per day",
+                           "6-10 cigarettes per day","11-20 cigarettes per day","More than 20 cigarettes per day"))
+metadata$Level_of_Education <- factor(metadata$Level_of_Education,
+                                      levels = c("Did not complete high school","High school or equivalent",
+                                                 "Technical or occupational certificate","Associate degree",
+                                                 "Some college coursework completed","Bachelors degree","Masters degree",
+                                                 "Doctorate (PhD)","Professional (MD, DO, DDS, JD)"))
+metadata$Recreational_Drug_Frequency <- factor(metadata$Recreational_Drug_Frequency,
+                levels = c("Never","On special occasions","Once per week","3-5 times per week","Regularly"))
+metadata$Exercise_per_week <- factor(metadata$Exercise_per_week,
+                levels = c("Never","1-2 times per week","3-4 times per week","5-7 times per week","8 or more times per week"))
+metadata$Hours_of_sleep_per_night <- factor(metadata$Hours_of_sleep_per_night,
+                levels = c("5 hours or less", "6 hours or less", "More than 8 hours"))
+metadata$Alcohol_Use_per_week <- factor(metadata$Alcohol_Use_per_week,
+                levels = c("Never","On special occasions","Once per week","3-5 times per week","Regularly"))
+```
+
+Third, there are different variables that are codified in a difficult way to understand. We are going to code them in an easier way.
+
+### Birth country
+
+There are a lot of birth countries that are coded in different ways but reffers to the same country. We start with these number of different countries:
+
+```{r}
+length(sort(unique(metadata$Birth_Country)))
+```
+
+First of all, we convert all the birth countries to lower case.
+
+```{r tolower}
+metadata$Birth_Country <- tolower(metadata$Birth_Country)
+```
+
+Based on the answers of the participants, we group some answers:
+
+```{r birth_country}
+metadata[which(metadata$Birth_Country=="canada000"),]$Birth_Country <- "canada"
+metadata[which(metadata$Birth_Country=="cn"),]$Birth_Country <- "china"
+metadata[which(metadata$Birth_Country=="brasil"),]$Birth_Country <- "brazil"
+metadata[which(metadata$Birth_Country=="columbia"),]$Birth_Country <- "colombia"
+metadata[which(metadata$Birth_Country=="ecuador"),]$Birth_Country <- "equador"
+metadata[which(metadata$Birth_Country=="isreal"),]$Birth_Country <- "israel"
+metadata[which(metadata$Birth_Country=="south african"),]$Birth_Country <- "south africa"
+metadata[which(metadata$Birth_Country=="switzerlad"),]$Birth_Country <- "switzerland"
+metadata[which(metadata$Birth_Country=="taiwan, republic of china"),]$Birth_Country <- "taiwan"
+metadata[which(metadata$Birth_Country=="ukrain"),]$Birth_Country <- "ukraine"
+metadata[which(metadata$Birth_Country=="tokyo, japan"),]$Birth_Country <- "tokyo"
+
+dom_rep <- c("dominica republic","republica dominicana","drc","dominican republic")
+metadata[which(metadata$Birth_Country%in%dom_rep),]$Birth_Country <- "dominican_republic"
+
+usa <- c("estados unidos","string:united_states","u.s.","u.s.a.","umited states","unite states","united  atates","united seas","united staes","united stares of america","united stares","united state","united state of america","united stateas","united stated","united stateds","united states","united states 91401","united states of america","united states of america (usa)","united statez","unites states","unites states of america","unitrd states","unted states","untied states","us","usa","ysa","isa")
+metadata[which(metadata$Birth_Country%in%usa),]$Birth_Country <- "USA"
+
+
+germ <- c("germany - father was in military","germay")
+metadata[which(metadata$Birth_Country%in%germ),]$Birth_Country <- "germany"
+
+cuba <- c("havana, cuba","la habana, cuba")
+metadata[which(metadata$Birth_Country%in%cuba),]$Birth_Country <- "cuba"
+
+hk <- c("hk","hong kong, china","hong kong")
+metadata[which(metadata$Birth_Country%in%hk),]$Birth_Country <- "hong_kong"
+
+mexico <- c("mexico city","mexico,city")
+metadata[which(metadata$Birth_Country%in%mexico),]$Birth_Country <- "mexico"
+
+miami <- c("miami beach","miami florida")
+metadata[which(metadata$Birth_Country%in%miami),]$Birth_Country <- "miami"
+
+na <- c("none of your business","r")
+metadata[which(metadata$Birth_Country%in%na),]$Birth_Country <- NA
+
+uae <- c("united arab emirates","uae")
+metadata[which(metadata$Birth_Country%in%uae),]$Birth_Country <- "UAE"
+
+uk <- c("united kingdom","uk","england")
+metadata[which(metadata$Birth_Country%in%uk),]$Birth_Country <- "UK"
+```
+
+We finish with this number of different countries:
+
+```{r}
+length(sort(unique(metadata$Birth_Country)))
+```
+
+### Height
+
+The height is codified as "5 ft ,6 in". We transform it in a numeric value calculated in "in" (1 ft = 12 in). Moreover, there are some individuals that have a mistake in the variable and it is already transformed to "in" like "67.2 in" or "5\u009210\u0094 in". 
+
+```{r height}
+#First, transform to NA the individual with "5\u009210\u0094 in"
+metadata[which(metadata$PatientID=="204229100124_R07C01"),]$Height <- NA
+
+#Second, transform ft and in to in
+metadata$Height_in <- sapply(metadata$Height, function(x) as.numeric(regmatches(x, gregexpr("[[:digit:]]+", x))[[1]][1])*12+as.numeric(regmatches(x, gregexpr("[[:digit:]]+", x))[[1]][2]), USE.NAMES = F)
+
+```
+
+```{r echo=FALSE}
+kable(metadata[2:6,c("Height","Height_in")], caption="Transformation of Height.", align=rep('c', 5))
+```
+
+### Ethnicity
+
+In the case of the ethnicity and ancestry variable, there are participants that only marked up one ethnicity, others that marked more than one, and others than wrote in the "Other" section. We will group the ethnicities following the same groups from the survey but including the group "Other" for those who marked up more than one ethnicity or those who marked the option "Other".
+
+```{r}
+ethnies <- c("Asian (e.g. Chinese, Indian, Kazakh, Thai)","European or Caucasian",
+             "Latino or Hispanic","Middle Eastern or North African","Native American or Alaska Native",
+             "Sub-Saharan African","Pacific Islander or Oceanian","African American or Black")
+
+
+metadata$Ethnicity <- NA
+
+for (i in 1:length(metadata$Ethnicity_Ancestry)){
+  x <- metadata$Ethnicity_Ancestry[i]
+  a <- str_trim(str_split(x, ";")[[1]])
+  if (length(a)==1){
+    if (a%in%ethnies){
+      metadata$Ethnicity[i] <- a
+    }
+    else{
+      metadata$Ethnicity[i] <- "Other"
+    }
+  }
+  if (length(a)>1){
+    if (a[1]%in%ethnies){
+      if (a[2]%in%ethnies){
+      metadata$Ethnicity[i] <- "Other"
+      }
+      else{
+        metadata$Ethnicity[i] <- a[1]
+      }
+    }  
+    else{
+      metadata$Ethnicity[i] <- "Other"
+    }
+  }
+}
+```
+
+We also simplify the levels of the ethnicity groups:
+
+```{r}
+metadata$Ethnicity <- factor(metadata$Ethnicity)
+levels(metadata$Ethnicity) <- c("Afr_Ame","Asia","Euro","Lati","Mid_afr","Nat_ame","Other","Ocea","Saha")
+metadata$Ethnicity <- factor(metadata$Ethnicity, levels = c("Euro",levels(metadata$Ethnicity)[-3])) #European as reference
+```
+
+```{r echo=FALSE}
+kable(metadata[3:8, c("Ethnicity_Ancestry", "Ethnicity")], caption="Ethnicity groups.", align=rep('c', 5))
+```
+
+
+### Diseases
+
+There are many variables that describe the presence or not of diseases. One variable have the information for a group of diseases (for example, cardiovascular diseases). We create a new variable for each group of diseases ("disease_any") were we set TRUE for the participants who has one or more diseases of this group, and FALSE for the rest of the participants.
+
+```{r}
+diseases <- c("Cancer_Diagnosis","Cardiovascular","Respiratory_Disease","Endocrine_Disease","Skin_Hair","Gastrointestinal",
+              "Genito_Urinary","Musculoskeletal","Neuropsychological","Reproductive","Immune")
+
+no <- c("n/a","N/A","ninguna","No.","No","no","None","Non","none","non","NINGUNO")
+
+for (i in 1:length(diseases)){
+  metadata[[paste0(diseases[[i]],"_any")]] <- !(is.na(metadata[[diseases[i]]]) | metadata[[diseases[i]]]%in%no)
+}
+```
+
+Second, we create individual variables for specific diseases (like high blood pressure) were we again indicate TRUE if the participant has this disease or FALSE if he/she has not.
+
+#### Cardiovascular diseases
+
+```{r cardio}
+metadata$High_Blood_Pressure <- sapply(metadata$Cardiovascular, function(x) "High Blood Pressure"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$High_Cholesterol <- sapply(metadata$Cardiovascular, function(x) "High Cholesterol"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Anemia <- sapply(metadata$Cardiovascular, function(x) "Anemia"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Heart_Murmur <- sapply(metadata$Cardiovascular, function(x) "Heart Murmur"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Heart_Attack <- sapply(metadata$Cardiovascular, function(x) "Heart Attack"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Stroke <- sapply(metadata$Cardiovascular, function(x) "Stroke"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+```{r echo=FALSE}
+kable(metadata[16:20, c("Cardiovascular","Cardiovascular_any","High_Blood_Pressure","High_Cholesterol","Anemia","Heart_Murmur","Heart_Attack","Stroke")], caption="Division of Cardiovascular in 8 variables.", align=rep('c', 5))
+```
+
+#### Neuropsychological diseases
+
+We focus mainly in 5 neuropsychological diseases: Alzheimer's disease, anxiety, depression, epilepsy, and migraines.
+
+```{r neuro}
+metadata$Alzheimer <- sapply(metadata$Neuropsychological, function(x)"Alzheimers Disease"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Anxiety <- sapply(metadata$Neuropsychological, function(x) "Anxiety"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Depression <- sapply(metadata$Neuropsychological, function(x) "Depression"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Epilepsy <- sapply(metadata$Neuropsychological, function(x) "Epilepsy"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Migraines <- sapply(metadata$Neuropsychological, function(x) "Migraines"%in%str_trim(str_split(x, ";")[[1]]) , USE.NAMES = F)
+```
+
+```{r echo=FALSE}
+kable(metadata[c(9,18,27:29), c("Neuropsychological","Neuropsychological_any","Alzheimer","Anxiety","Depression","Epilepsy","Migraines")], caption="Division of neuropsychological disorders in 6 variables.", align=rep('c', 5))
+```
+
+
+#### Respiratory diseases
+
+We focus mainly in 7 respiratory diseases: Asthma, Chronic Bronchitis, Cystic Fibrosis, Pneumonia, Tuberculosis, Emphysema, and COPD.
+
+```{r resp}
+metadata$Asthma <- sapply(metadata$Respiratory_Disease, function(x)"Asthma"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Chronic_Bronchitis <- sapply(metadata$Respiratory_Disease, function(x) "Chronic Bronchitis"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Cystic_Fibrosis <- sapply(metadata$Respiratory_Disease, function(x) "Cystic Fibrosis/Bronchiectasis"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Pneumonia <- sapply(metadata$Respiratory_Disease, function(x) "Pneumonia"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Tuberculosis <- sapply(metadata$Respiratory_Disease, function(x) "Tuberculosis"%in%str_trim(str_split(x, ";")[[1]]) , USE.NAMES = F)
+metadata$Emphysema <- sapply(metadata$Respiratory_Disease, function(x) "Emphysema"%in%str_trim(str_split(x, ";")[[1]]) , USE.NAMES = F)
+metadata$COPD <- sapply(metadata$Respiratory_Disease, function(x) "Chronic Obstructive Pulmonary Disease (COPD)"%in%str_trim(str_split(x, ";")[[1]]) , USE.NAMES = F)
+```
+
+```{r echo=FALSE}
+kable(metadata[c(7,16,25:27), c("Respiratory_Disease","Respiratory_Disease_any","Asthma","Chronic_Bronchitis","Cystic_Fibrosis","Pneumonia","Tuberculosis","Emphysema","COPD")], caption="Division of respiratory disorders in 8 variables.", align=rep('c', 5))
+```
+
+
+#### Endocrine diseases
+
+We focus mainly in 4 endocrine diseases: Type 1 Diabetes,Type 2 Diabetes, Prediabetes, and Osteoporosis.
+
+```{r endo}
+metadata$Diabetes_1 <- sapply(metadata$Endocrine_Disease, function(x)"Type 1 Diabetes"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Diabetes_2 <- sapply(metadata$Endocrine_Disease, function(x) "Type 2 Diabetes"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Prediabetes <- sapply(metadata$Endocrine_Disease, function(x) "Prediabetes"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Osteoporosis <- sapply(metadata$Endocrine_Disease, function(x) "Osteoporosis"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+```{r echo=FALSE}
+kable(metadata[c(15:20), c("Endocrine_Disease","Endocrine_Disease_any","Diabetes_1","Diabetes_2","Prediabetes","Osteoporosis")], caption="Division of endocrine disorders in 5 variables.", align=rep('c', 5))
+```
+
+#### Gastrointestinal diseases
+
+```{r gastro}
+metadata$Cirrhosis <- sapply(metadata$Gastrointestinal, function(x) "Cirrhosis"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Hepatitis <- sapply(metadata$Gastrointestinal, function(x) "Hepatitis"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+#### Musculoskeletal diseases
+
+```{r muscu}
+metadata$Gout <- sapply(metadata$Musculoskeletal, function(x) "Gout"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Rheumatoid_Arthritis <- sapply(metadata$Musculoskeletal, function(x) "Rheumatoid Arthritis"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+#### Immune diseases
+
+```{r immu}
+metadata$Cytomegalovirus <- sapply(metadata$Immune, function(x) "Cytomegalovirus (CMV)"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+### Drugs
+
+There is a phenotype called "Recreational Drug Use" that include 5 different drug classes (Amphetamines, Benzodiazepines, Marijuana, Hallucinodens, and MDMA). We create one column (logical class) for each one and also one general for any drug use.
+
+```{r}
+metadata$Recreational_Drug_Use_any <- !(is.na(metadata$Recreational_Drug_Use) | metadata$Recreational_Drug_Use%in%no)
+metadata$Amphetamines <- sapply(metadata$Recreational_Drug_Use, function(x) "Amphetamines"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Benzodiazepines <- sapply(metadata$Recreational_Drug_Use, function(x) "Benzodiazepines"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Marijuana <- sapply(metadata$Recreational_Drug_Use, function(x) "Marijuana"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Hallucinogens <- sapply(metadata$Recreational_Drug_Use, function(x) "Hallucinogens"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$MDMA <- sapply(metadata$Recreational_Drug_Use, function(x) "MDMA"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Opioids <- sapply(metadata$Recreational_Drug_Use, function(x) "Opioids"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+Create a variable for the marijuana frequency (considering only the individuals who consume marijuana and do not consume any of the other recreational drugs). Set NA for those who consume marijuana and other drugs.
+
+```{r}
+metadata$Marijuana_frequency <- NA
+for (i in 1:nrow(metadata)){
+  if (is.na(metadata$Recreational_Drug_Use[i])){
+    next
+  }
+  if (metadata$Recreational_Drug_Use[i]=="Marijuana" | metadata$Recreational_Drug_Use[i]=="Marijuana;None"){
+    metadata$Marijuana_frequency[i] <- as.character(metadata$Recreational_Drug_Frequency[i])
+  }
+  if (metadata[i,]$Recreational_Drug_Use=="None"){
+    metadata$Marijuana_frequency[i] <- "Never"
+  }
+}
+metadata$Marijuana_frequency <- factor(metadata$Marijuana_frequency,
+                levels = c("Never","On special occasions","Once per week","3-5 times per week","Regularly"))
+```
+
+
+```{r echo=FALSE}
+kable(metadata[c(2,54,65:68), c("Recreational_Drug_Use","Recreational_Drug_Use_any","Marijuana_frequency","Amphetamines","Benzodiazepines","Marijuana", "Hallucinogens", "MDMA","Opioids")], caption="Division of Recreational Drugs Use in 8 variables.", align=rep('c', 5))
+```
+
+
+Moreover, there is another variable that describes whether the parents take drugs or drink alcohol. We create one column for the father and one for the mother.
+
+```{r}
+metadata$Drug_Alcohol_mother <- sapply(metadata$Drug_Alcohol, function(x) "Mother"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+metadata$Drug_Alcohol_father <- sapply(metadata$Drug_Alcohol, function(x) "Father"%in%str_trim(str_split(x, ";")[[1]]), USE.NAMES = F)
+```
+
+```{r echo=FALSE}
+kable(metadata[c(990:998), c("Drug_Alcohol","Drug_Alcohol_mother","Drug_Alcohol_father")], caption="Drugs and alcohol for parents.", align=rep('c', 5))
+```
+
+## Create new variables
+
+### Body Mass Index (BMI) and obesity
+
+To calculate the Body Mass Index (BMI), we used the formula:
+
+$$BMI=\frac{mass(lb)}{height(in)^2}*703$$
+
+Select only the individuals with BMI between 10 and 60. In addition, we create a column named "BMI_class" that classify the individuals in underweight (BMI<18.5), healthy (18.5<BMI<25), overweight (25<BMI<30), and obesity (BMI>30).
+
+```{r}
+metadata$BMI <- metadata$Weight/(metadata$Height_in^2)*703
+
+metadata <- metadata[which(metadata$BMI>10 & metadata$BMI<60),]
+
+metadata$BMI_class <- NA
+metadata$BMI_class[metadata$BMI<18.5] <- "underweight"
+metadata$BMI_class[metadata$BMI<25 & metadata$BMI>=18.5] <- "healthy"
+metadata$BMI_class[metadata$BMI<30 & metadata$BMI>=25] <- "overweight"
+metadata$BMI_class[metadata$BMI>=30] <- "obesity"
+
+#Sort the levels
+metadata$BMI_class <- factor(metadata$BMI_class,
+                levels = c("underweight", "healthy", "overweight","obesity"))
+```
+
+```{r echo=FALSE}
+kable(metadata[16:20, c("Weight","Height_in","BMI","BMI_class")], caption="Body Mass index (BMI) calculation.", align=rep('c', 5))
+```
+
+### Age
+
+We change the DecimalChronologicalAge variable for Age. 
+
+```{r}
+names(metadata)[names(metadata) == 'DecimalChronologicalAge'] <- 'age'
+```
+
+
+### Sex
+
+We remove intersex individuals.
+
+```{r}
+metadata <- metadata[which(metadata$Biological_Sex!="Intersex"),]
+```
+
+# Descriptive of most relevant phenotypes
+
+## Numerical variables
+
+```{r nums, silent=TRUE, echo=FALSE}
+descr(metadata[,c("age","BMI","Pack_Years_Smoker")],
+      stats     = c("mean","sd","min","max","n.valid","pct.valid"),
+      transpose = TRUE,
+      headings  = FALSE)
+```
+
+```{r echo=FALSE}
+ggplot(metadata, aes(x=age)) +
+    geom_histogram(binwidth=.5, alpha=.8, position="identity", fill="#F0866F") +
+    labs(x="Age",y="Number of individuals", title="Age") +
+    theme(plot.title = element_text(size=20, face="bold", hjust = 0.5, margin = margin(b=20)))
+```
+
+```{r echo=FALSE, warning=FALSE}
+ggplot(metadata, aes(x=BMI, fill=BMI_class)) +
+  geom_histogram(binwidth=.5, alpha=.8, position="identity") +
+  scale_fill_brewer(palette="Set2", name = "BMI classification") +
+  labs(x="BMI",y="Number of individuals", title="Body Mass index (BMI) distribution") +
+  theme(plot.title = element_text(size=20, face="bold", hjust = 0.5, margin = margin(b=20)))
+```
+
+## Factor variables
+
+```{r fact, echo=FALSE, warning=FALSE, fig.width = 3}
+metadata$Biological_Sex <- as.factor(metadata$Biological_Sex)
+
+factors <- metadata %>%
+       select_if(is.factor)
+
+print(dfSummary(factors, 
+                varnumbers   = FALSE, 
+                valid.col    = FALSE, 
+                graph.magnif = 0.8), 
+      method   = 'render',
+      headings = FALSE,
+      bootstrap.css = FALSE,
+      col.widths=c(1000,2000,2000,1000,1000))
+```
+
+## Logical variables
+
+```{r log, echo=FALSE, warning=FALSE}
+logicals <- metadata %>% 
+  select(-Allergies) %>% 
+       select_if(is.logical)
+
+dfSummary(logicals,
+          varnumbers   = FALSE,
+          style        = "grid",
+          graph.magnif = 0.8,
+          valid.col    = FALSE,
+          headings  = FALSE,
+          silent = TRUE,
+          tmp.img.dir  = "/tmp")
+
+```
+
+## Sex differences
+
+```{r BMI, echo=FALSE, warning=FALSE, silent = TRUE}
+with(metadata, 
+     print(ctable(x = Biological_Sex, 
+                  y = BMI_class, 
+                  chisq = TRUE,
+                  headings = FALSE),
+           method = "render")
+)
+```
+
+```{r tob, echo=FALSE, warning=FALSE, silent = TRUE}
+with(metadata, 
+     print(ctable(x = Biological_Sex, 
+                  y = Tobacco_Use, 
+                  chisq = TRUE,
+                  headings = FALSE),
+           method = "render")
+)
+```
+
+
+```{r recr, echo=FALSE, warning=FALSE, silent = TRUE}
+with(metadata, 
+     print(ctable(x = Biological_Sex, 
+                  y = Recreational_Drug_Frequency, 
+                  chisq = TRUE,
+                  headings = FALSE),
+           method = "render")
+)
+```
+
+
+# Metadata saving
+
+The variables contained in the final metadata file are the following:
+
+```{r vars_new, echo=FALSE}
+df <- data.frame(colnames(metadata))
+colnames(df) <- "Variable"
+
+#Include class type and examples
+df$Class <- NA
+df$Examples <- NA
+
+for(i in 1:ncol(metadata)){
+  a <- metadata[[i]]
+  cl <- class(a)
+  df$Class[i] <- cl
+  if (cl=="character" | cl=="factor" | cl=="Date" | cl=="logical"){
+    df$Examples[i] <- paste(na.omit(unique(a[!is.na(a)])[1:3]),collapse=" / ")
+  }
+  if (cl=="numeric"){
+    mean <- round(mean(a, na.rm = T))
+    range <- paste(round(range(a, na.rm = T),digits=2),collapse="-")
+    df$Examples[i] <- paste0(mean," (",range,")")
+  }
+}
+write.csv2(df,"G:/TruDiagnostic/metadata/vars.csv", row.names = F)
+kable(df, caption="Variables contained in the final metadata. Three examples for the character strings and. Mean, minimum, and maximum for the numeric strings.")
+```
+
+Finally, we save the metadata in a ".Rdata" and ".csv files with the variables transformed.
+
+```{r save}
+save(metadata, file="G:/TruDiagnostic/metadata/metadata.Rdata")
+write.csv2(data.frame(metadata),"G:/TruDiagnostic/metadata/metadata.csv", row.names = F)
+```
