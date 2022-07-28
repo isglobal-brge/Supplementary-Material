@@ -1,0 +1,147 @@
+---
+title: "Descriptive Analysis Metadata N=3,433"
+author:
+  - name: Natàlia Carreras-Gallo
+    affiliation: 
+    - Barcelona Institute for Global health (ISGlobal), Barcelona, Spain
+    email: natalia.carreras@isglobal.org
+  - name: Juan R. González
+    affiliation:
+    - Barcelona Institute for Global health (ISGlobal), Barcelona, Spain
+    - Centro de Investigación Biomédica en Red en Epidemiología y Salud Pública (CIBERESP), Madrid, Spain
+    - Department of Mathematics, Universitat Autònoma de Barcelona, Bellaterra, Spain
+    email: juanr.gonzalez@isglobal.org
+date: '`r Sys.Date()`'
+output: 
+  BiocStyle::html_document:
+    number_sections: true
+    toc: yes
+    fig_caption: yes
+    toc_float: yes
+    caption: yes
+vignette: >
+    %\VignetteIndexEntry{Vignette Title}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      results = 'asis',     # Can also be set at chunk level
+                      comment = NA,
+                      prompt  = FALSE,
+                      cache   = FALSE)
+summarytools::st_options(plain.ascii = FALSE,       # Always use in Rmd documents
+           style       = "rmarkdown", # Always use in Rmd documents
+           subtitle.emphasis = FALSE,
+           descr.silent = TRUE) # Improves layout w/ some themes
+```
+
+# Libraries and data loading
+
+Load the required libraries and restrict the number of digits to 3:
+
+```{r libs, warning=FALSE, message=FALSE}
+library(summarytools)
+library(ggplot2)
+library(tidyverse)
+
+options(digits=3)
+```
+
+```{r data, message=FALSE}
+load("G:/TruDiagnostic/metadata/metadata_3424.Rdata")
+```
+
+# Descriptive of most relevant phenotypes
+
+## Numerical variables
+
+```{r nums, silent=TRUE, echo=FALSE}
+descr(metadata[,c("age","BMI","Pack_Years_Smoker")],
+      stats     = c("mean","sd","min","max","n.valid","pct.valid"),
+      transpose = TRUE,
+      headings  = FALSE)
+```
+
+```{r echo=FALSE}
+ggplot(metadata, aes(x=age)) +
+    geom_histogram(binwidth=.5, alpha=.8, position="identity", fill="#F0866F") +
+    labs(x="Age",y="Number of individuals", title="Age") +
+    theme(plot.title = element_text(size=20, face="bold", hjust = 0.5, margin = margin(b=20)))
+```
+
+```{r echo=FALSE, warning=FALSE}
+ggplot(metadata, aes(x=BMI, fill=BMI_class)) +
+  geom_histogram(binwidth=.5, alpha=.8, position="identity") +
+  scale_fill_brewer(palette="Set2", name = "BMI classification") +
+  labs(x="BMI",y="Number of individuals", title="Body Mass index (BMI) distribution") +
+  theme(plot.title = element_text(size=20, face="bold", hjust = 0.5, margin = margin(b=20)))
+```
+
+## Factor variables
+
+```{r fact, echo=FALSE, warning=FALSE, fig.width = 3}
+factors <- metadata %>%
+       select_if(is.factor)
+
+print(dfSummary(factors, 
+                varnumbers   = FALSE, 
+                valid.col    = FALSE, 
+                graph.magnif = 0.8), 
+      method   = 'render',
+      headings = FALSE,
+      bootstrap.css = FALSE,
+      col.widths=c(1000,2000,2000,1000,1000))
+```
+
+## Logical variables
+
+```{r log, echo=FALSE, warning=FALSE}
+logicals <- metadata %>% 
+  select(-Allergies) %>% 
+       select_if(is.logical)
+
+dfSummary(logicals,
+          varnumbers   = FALSE,
+          style        = "grid",
+          graph.magnif = 0.8,
+          valid.col    = FALSE,
+          headings  = FALSE,
+          silent = TRUE,
+          tmp.img.dir  = "/tmp")
+
+```
+
+## Sex differences
+
+```{r BMI, echo=FALSE, warning=FALSE, silent = TRUE}
+with(metadata, 
+     print(ctable(x = Biological_Sex, 
+                  y = BMI_class, 
+                  chisq = TRUE,
+                  headings = FALSE),
+           method = "render")
+)
+```
+
+```{r tob, echo=FALSE, warning=FALSE, silent = TRUE}
+with(metadata, 
+     print(ctable(x = Biological_Sex, 
+                  y = Tobacco_Use, 
+                  chisq = TRUE,
+                  headings = FALSE),
+           method = "render")
+)
+```
+
+
+```{r recr, echo=FALSE, warning=FALSE, silent = TRUE}
+with(metadata, 
+     print(ctable(x = Biological_Sex, 
+                  y = Recreational_Drug_Frequency, 
+                  chisq = TRUE,
+                  headings = FALSE),
+           method = "render")
+)
+```
