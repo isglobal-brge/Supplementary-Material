@@ -1,4 +1,7 @@
-.card:hover{
-  background-color: #e9ecef;
-  font-weight:600;
+.max-h-0 {
+	max-height: 0;
+}
+
+.group:focus .group-focus\:max-h-40 {
+	max-height: 10rem;
 }
