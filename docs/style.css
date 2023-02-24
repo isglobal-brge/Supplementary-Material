@@ -5,3 +5,7 @@
 .group:focus .group-focus\:max-h-40 {
 	max-height: 10rem;
 }
+
+.button-social:hover {
+	color: darkgray;
+}
