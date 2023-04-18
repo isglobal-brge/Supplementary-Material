@@ -32,6 +32,14 @@ load("data/INMA4.genexp.Rdata")
 load("data/postExposome.Rdata")
 load("data/pregExposome.Rdata")
 
+## Cell-type replicability
+load("data/GSE87650.replicability_plot.Rdata")
+
+## Imprinted regions
+imp_regions <- read_delim("data/Imprinted_regions.txt")
+imp_regionsGR <- makeGRangesFromDataFrame(imp_regions, end.field = "Finish")
+seqlevelsStyle(imp_regionsGR) <- "UCSC"
+
 ## Prepare epimutations results ####
 ### Select quantile, beta and mlm
 ## Define functions
@@ -105,7 +113,7 @@ res.inma4.df$smoking <- ifelse(colData(inma4)[res.inma4.df$sample, "msmk"] == "n
 inma4.sum.df <- make_sum_df(res.inma4.df)
 
 ## Add smoking data
-helix_smk <- read.table("~/data/WS_HELIX/HELIX_analyses/PGRS_smok_GF/db/HELIX_smok.txt", header = TRUE)
+helix_smk <- read.table("../PGRS_smok_GF/db/HELIX_smok.txt", header = TRUE)
 helix_smk <- helix_smk[!duplicated(helix_smk$HelixID), ]
 helix_smk <- subset(helix_smk, HelixID %in% helix$HelixID)
 helix_map <- colData(helix)[, c("HelixID", "SampleID")]
@@ -127,6 +135,8 @@ names(methods) <- methods
 all.res.df <- rbind(res.inma0.df, res.inma4.df, res.helix.df) %>%
   mutate(dataset = factor(dataset, levels = c("Newborn", "4 years", "8 years"))) %>%
   filter(chromosome != 0)
+
+
 
 # Descriptives ####
 ## Data descriptives ####
@@ -225,6 +235,18 @@ write.table(full.tab[c(1:3, 9, 6:8, 4:5), ], file = "figures/PopDescrip_cat.txt"
             quote = FALSE, row.names = FALSE, sep = "\t")
 
 
+## Check overlap with imprinted regions ####
+all.res.GR <- makeGRangesFromDataFrame(all.res.df, keep.extra.columns = TRUE)
+imp_overlaps <- findOverlaps(all.res.GR, imp_regionsGR)
+all.res.df$imprinted <- "No"
+all.res.df$imprinted[from(imp_overlaps)] <- "Imprinted"
+
+table(all.res.df$imprinted, all.res.df$dataset, all.res.df$method)
+group_by(all.res.df, method, dataset) %>%
+  summarize(m = sprintf("%.1f", mean(imprinted == "Imprinted")*100)) %>%
+  spread(dataset, m)
+
+
 ## Check differences in biological variables ####
 summary(lm(age_sample_years ~ cohort, helixp))
 chisq.test(table(helixp$smoking, helixp$cohort))
@@ -242,14 +264,14 @@ epi.burden.plot <- all.sum.df %>%
   geom_bar(stat = "identity") +
   theme_bw() +
   facet_grid(~ method) +
-  scale_y_continuous(name = "Proportion of individuals") +
+  scale_y_continuous(name = "Proportion of individuals (%)") +
   scale_x_discrete(name = "Time point") +
   scale_color_discrete(name = "Epimutations per sample") +
   scale_fill_discrete(name = "Epimutations per sample") 
   
 
 ## Figure 5
-png("figures/allINMA.epiburden.png", height = 300, width = 900)
+png("figures/allINMA.epiburden.png", height = 1200, width = 3600, res = 300)
 epi.burden.plot
 dev.off()
 
@@ -283,7 +305,7 @@ all.magnitude.plot <- all.res.df %>%
   scale_x_continuous("Epimutations magnitude")
 
 ## Sup Figure 19
-png("figures/allINMA.magnitude.png", height = 200)
+png("figures/allINMA.magnitude.png", height = 800, width = 2000, res = 300)
 all.magnitude.plot
 dev.off()
 
@@ -367,7 +389,7 @@ recur.epi.freq.shared.plot <- recur.epi.comb %>%
   scale_y_continuous(name = "Epimutations in literature (%)", limits = c(0, 100))
 
 ## Sup Figure 20
-png("figures/allINMA.epi.freq.shared.png", height = 300)
+png("figures/allINMA.epi.freq.shared.png", height = 1200, width = 2000, res = 300)
 recur.epi.freq.shared.plot
 dev.off()
 
@@ -385,7 +407,7 @@ recur.epi.freq.cor.plot <- recur.epi.comb %>%
                 breaks = c(0.1, 0.2, 0.5, 1, 2, 5))
 
 
-png("figures/allINMA.epi.freq.cor.png")
+png("figures/allINMA.epi.freq.cor.png", height = 2000, width = 2000, res = 300)
 recur.epi.freq.cor.plot
 dev.off()
 
@@ -539,7 +561,7 @@ sex.burden.plot <- all.sum.df %>%
   scale_color_discrete(name = "Epimutations per sample") +
   scale_fill_discrete(name = "Epimutations per sample")
 
-png("figures/allINMA.burden.sex.png")
+png("figures/allINMA.burden.sex.png", height = 1800, width = 2000, res = 300)
 sex.burden.plot
 dev.off()
 
@@ -726,7 +748,7 @@ rec.sex.quant.plot <- plotRecurrentReg(candRegsGR["chr1_75590483"])
 rec.sex.beta.plot <- plotRecurrentReg(candRegsGR["chr6_150346497"])
 
 ## Sup Figure 17
-png("figures/INMA.sex.rec.epis.png", width = 1200)
+png("figures/INMA.sex.rec.epis.png", width = 4800, height = 2000, res = 300)
 plot_grid(rec.sex.quant.plot, rec.sex.beta.plot, ncol = 1, labels = c("A", "B"))
 dev.off()
 
@@ -801,7 +823,7 @@ batch.burden.plot <- inma0.sum.df %>%
   scale_color_discrete(name = "Epimutations per sample") +
   scale_fill_discrete(name = "Epimutations per sample")
 
-png("figures/INMA0.burden.batch.png", height = 250, width = 500)
+png("figures/INMA0.burden.batch.png", height = 1000, width = 2300, res = 300)
 batch.burden.plot
 dev.off()
 
@@ -836,7 +858,7 @@ cohort.burden.plot <- helix.sum.df %>%
   scale_color_discrete(name = "Epimutations per sample") +
   scale_fill_discrete(name = "Epimutations per sample")
 
-png("figures/HELIX.burden.cohort.png", width = 800, height = 300)
+png("figures/HELIX.burden.cohort.png", width = 3500, height = 1200, res = 300)
 cohort.burden.plot
 dev.off()
 
@@ -941,7 +963,7 @@ smk.burden.plot <- all.sum.df %>%
 
 
 
-png("figures/allINMA.burden.smoking.png")
+png("figures/allINMA.burden.smoking.png", height = 2000, width = 2000, res = 300)
 smk.burden.plot
 dev.off()
 
@@ -997,6 +1019,48 @@ recur.smoking.top <- recur.smoking.epi %>%
   filter(`Newborn_All samples` == 1e-5 & `4 years_All samples` == 1e-5, `8 years_All samples` == 1e-5) %>%
   filter(Newborn_Smokers > recur_thres | `4 years_Smokers` > recur_thres | `8 years_Smokers` > recur_thres)
 writexl::write_xlsx(recur.smoking.top, path = "figures/INMA.Epimutations.recurrenceSmoking.xlsx")
+
+## Comparison with cell types ####
+cd <- colData(helix)[, c("Sample_Name", "NK", "CD8T", "CD4T", "Bcell", "Mono", "Eos", "Neu")]
+cd$sample <- cd$Sample_Name
+
+helix.cell_type_sum <- left_join(helix.sum.df, data.frame(cd), by = "sample")
+
+
+lapply(c("NK", "CD8T", "CD4T", "Bcell", "Mono", "Eos", "Neu"), function(cell){
+  a <- lapply(c("quantile", "beta", "mlm"), function(met){
+    sub <- subset(helix.cell_type_sum, method == met)
+    tab <- table(isOutliersRow(sub[[cell]]), sub$n_cat)
+    list(tab = tab, test = chisq.test(tab))
+  })
+  names(a) <- c("quantile", "beta", "mlm")
+  a
+})
+
+cell_corr <- lapply(c("NK", "CD8T", "CD4T", "Bcell", "Mono", "Eos", "Neu"), function(cell){
+  a <- lapply(c("quantile", "beta", "mlm"), function(met){
+    sub <- subset(helix.cell_type_sum, method == met)
+    sub$cell <- sub[[cell]]
+    summary(glmrob(n ~ cell, sub, family = "poisson"))
+  })
+  names(a) <- c("quantile", "beta", "mlm")
+  a
+})
+
+png("figures/HELIX.cellProp.freqEpi.png", width = 3000)
+helix.cell_type_sum %>%
+  mutate(n = ifelse(n > 50, 50, n)) %>%
+  gather(Cell, Proportion, 10:16) %>%
+  ggplot(aes(x = Proportion, y = n)) +
+  geom_point() +
+  facet_grid(method ~ Cell, scales = "free_x") +
+  theme_bw()
+dev.off()
+
+lapply(c("NK", "CD8T", "CD4T", "Bcell", "Mono", "Eos", "Neu"), function(cell){
+  tab <- table(isOutliersRow(helix.cell_type_sum[[cell]]), helix.cell_type_sum$n_cat)
+  summary(glmrob(n ~ eval(cell), data = subset(inma4.sum.df, method == m & n > 0), family = "poisson"))
+})
 
 
 
@@ -1083,12 +1147,13 @@ sab.rep.res2 <- sab.rep.res %>%
          y8_st2 = ifelse(log8, "8 years", ""),
          sigDatasets2 = paste(cord_st2, y4_st2, y8_st2, sep = "-"))
 
-## Sup Figure 22
+## Sup Figure 25
 sab.replic.strict.plot <- sab.rep.res2 %>%
   group_by(method, sigDatasets)  %>%
   filter(method %in% methods) %>%
   summarize(n = n()) %>%
-  complete(method, n, fill = list(n = 0)) %>%
+  # ungroup() %>%
+  # complete(method, sigDatasets, fill = list(n = 0)) %>%
   mutate(p = n/sum(n), 
          method = factor(method, levels = c("quantile", "beta", "mlm")),
          category = dplyr::recode(sigDatasets, "--8 years" = "8 years",
@@ -1115,7 +1180,8 @@ sab.replic.signal.plot <- sab.rep.res2 %>%
   group_by(method, sigDatasets2)  %>%
   filter(method %in% methods) %>%
   summarize(n = n()) %>%
-  complete(method, n, fill = list(n = 0)) %>%
+  # ungroup() %>%
+  # complete(method, sigDatasets2, fill = list(n = 0)) %>%
   mutate(p = n/sum(n), 
          method = factor(method, levels = c("quantile", "beta", "mlm")),
          category = dplyr::recode(sigDatasets2, "--8 years" = "8 years",
@@ -1138,8 +1204,8 @@ sab.replic.signal.plot <- sab.rep.res2 %>%
   theme(plot.title = element_text(hjust = 0.5, face = "bold"),
         legend.position = "right")
 
-## Sup Figure 22
-png("figures/INMAsab.replic.png", width = 975, height = 400)
+## Sup Figure 25
+png("figures/INMAsab.replic.png", width = 4000, height = 1600, res = 300)
 plot_grid(sab.replic.strict.plot, sab.replic.signal.plot, nrow = 1, 
           rel_widths = c(2, 3))
 dev.off()
@@ -1393,7 +1459,7 @@ res.inma4.filt.sumdf  <- res.inma4.filt %>%
          measure = factor(measure, levels = c("z", "rank")), 
          method = factor(method, levels = c("quantile", "beta", "mlm")))
 
-## Sup Figure 24
+## Sup Figure 26
 inma4.gexp.plot <- res.inma4.filt.sumdf %>% 
   ggplot(aes(x = exp_type, y = value, color = method)) +
   geom_violin() +
@@ -1403,7 +1469,7 @@ inma4.gexp.plot <- res.inma4.filt.sumdf %>%
   facet_grid(measure ~ method, scales = "free") +
   scale_x_discrete(name = "Gene mapping")
 
-png("figures/INMA4.genexp.png")
+png("figures/INMA4.genexp.png", width = 2000, height = 2000, res = 300)
 inma4.gexp.plot
 dev.off()
 
@@ -1491,7 +1557,7 @@ res.helix.filt.sumdf  <- res.helix.filt %>%
          measure = factor(measure, levels = c("z", "rank")), 
          method = factor(method, levels = c("quantile", "beta", "mlm")))
 
-## Sup Figure 24
+## Sup Figure 27
 helix.gexp.plot <- res.helix.filt.sumdf %>% 
   ggplot(aes(x = exp_type, y = value, color = method)) +
   geom_violin() +
@@ -1501,7 +1567,7 @@ helix.gexp.plot <- res.helix.filt.sumdf %>%
   facet_grid(measure ~ method, scales = "free")  +
   scale_x_discrete(name = "Gene mapping")
 
-png("figures/HELIX.genexp.png")
+png("figures/HELIX.genexp.png", height = 2000, width = 2000, res = 300)
 helix.gexp.plot
 dev.off()
 
@@ -1519,7 +1585,10 @@ res.comb.filt.sumdf <- rbind(res.inma4.filt %>%
          exp_type = factor(exp_type, levels = c("eqtm", "tss", "near")), 
          method = factor(method, levels = c("quantile", "beta", "mlm")))
 
-## Figure 6
+
+
+
+## Figure 5B
 all.prop.gexp.plot <- res.comb.filt.sumdf %>%
   group_by(method, exp_type, age) %>%
   summarize(p = mean(value)) %>%
@@ -1530,9 +1599,14 @@ all.prop.gexp.plot <- res.comb.filt.sumdf %>%
   scale_y_continuous("Epimutaitons with outlier expression (%)", limits = c(0, 50)) +
   scale_x_discrete(name = "Gene mapping")
 
-png("figures/allINMA.genexp.prop.png", height = 350)
+png("figures/allINMA.genexp.prop.png", height = 1400, width = 2000, res = 300)
 all.prop.gexp.plot
 dev.off()
+
+## Figure 5 - new
+panel_helix <- plot_grid(epi.burden.plot, all.prop.gexp.plot, rep.plot, ncol = 1, labels = LETTERS[1:3])
+ggsave(file = "figures/HELIX.panel.eps", plot = panel_helix, width = 6400, height = 7200, dpi = 600, units = "px")
+
 
 all.prop.gexp.tab <- lapply(c("4 years", "8 years"), function(a) {
   
@@ -1565,10 +1639,19 @@ all.prop.gexp.mod2 <- lapply(c("4 years", "8 years"), function(a) {
 
 
 ## Export epimutations with gene expresion ####
-cols <- c("idnum", "method", "epi_region_id", "chromosome",	"start", "end", "cpg_n",
+cols <- c("ID", "method", "epi_region_id", "chromosome",	"start", "end", "cpg_n",
           "mean_diff", "eqtm_out", "eqtm_z", "eqtm_rank", "eqtm_gene", "tss_out",
           "tss_z", "tss_rank", "tss_gene", "near_out", "near_z", "near_rank", "near_gene")
-gexp_res_list <- list(`4 years` = subset(res.inma4.filt[, cols], 
+
+inma_ids <- sprintf("I%03d", seq_len(length(unique(res.inma4.filt$idnum))))
+names(inma_ids) <- as.character(sort(unique(res.inma4.filt$idnum)))
+res.inma4.filt$ID <- inma_ids[as.character(res.inma4.filt$idnum)]
+
+helix_ids <- sprintf("H%03d", seq_len(length(unique(res.helix.filt$idnum))))
+names(helix_ids) <- as.character(sort(unique(res.helix.filt$idnum)))
+res.helix.filt$ID <- helix_ids[as.character(res.helix.filt$idnum)]
+
+  gexp_res_list <- list(`4 years` = subset(res.inma4.filt[, cols], 
                                          !is.na(tss_z) | !is.na(eqtm_z) | !is.na(near_z)),
                       `8 years` = subset(res.helix.filt[, cols], 
                                          !is.na(tss_z) | !is.na(eqtm_z) | !is.na(near_z)))
@@ -1767,7 +1850,11 @@ mean_diffs8 <- mclapply(seq_len(nrow(rep_epis)), function(i) {
 }, mc.cores = 20)
 rep_epis$mean_diff8 <- unlist(mean_diffs8)
 
+rep_ids <- sprintf("IND%02d", seq_len(length(unique(rep_epis$idnum))))
+names(rep_ids) <- as.character(sort(unique(rep_epis$idnum)))
+
+rep_epis$ID <- rep_ids[as.character(rep_epis$idnum)]
 
 pers_epi_df <- rep_epis %>% 
-  select(method, idnum, epi_region_id, chromosome, start, end, mean_diff0, mean_diff4, mean_diff8) 
+  select(method, ID, epi_region_id, chromosome, start, end, mean_diff0, mean_diff4, mean_diff8) 
 writexl::write_xlsx(pers_epi_df,  path = "tables/INMA.Epimutations.persistentEpis.xlsx")
