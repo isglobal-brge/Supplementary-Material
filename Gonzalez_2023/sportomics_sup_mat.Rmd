@@ -1,0 +1,1544 @@
+---
+title: "Injury prediction modelling in football players"
+author:
+- name: Juan R. Gonzalez
+  affiliation:
+  - &isglobal Bioinformatics Research Group in Epidemiolgy (BRGE), Barcelona Insitute for Global Health (ISGlobal)
+  - &uab Department of Mathematics, Autonomous University of Barcelona (UAB)
+  email: juanr.gonzalez@isglobal.org
+- name: Eva Ferrer
+  affiliation:
+  - &fcb FCB innovation hub
+- name: Gil Rodas
+  affiliation:
+  - &fcb FCB innovation hub
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    number_sections: true
+    toc_float: no
+vignette: >
+  %\VignetteIndexEntry{Injury prediction modelling}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1070px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment="", warning=FALSE, message=FALSE, cache=TRUE,
+                      fig.align = 'center')
+```
+
+# Getting started
+
+Load the required libraries
+
+```{r, cache=FALSE}
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(tsibble)
+library(fuzzyjoin)
+library(reshape2)
+library(TTR)
+library(zoo)
+library(magrittr)
+library(ggfortify)
+library(broom)
+library(bbplot)
+library(ggplotify)
+library(plotly)
+library(tidymv)
+library(forcats)
+library(dlnm) 
+library(survival)
+library(splines)
+library(mgcv)
+library(SNPassoc)
+library(kableExtra)
+library(RColorBrewer)
+library(pROC)
+library(gtsummary)
+library(recipes)
+library(tidy.outliers)
+library(DescTools)
+library(voxel)
+library(grid)
+library(gridExtra)
+library(survminer)
+```
+
+and write some functions
+
+```{r, cache=FALSE}
+# Acture to Chronic Workload Ratio
+ACWR <- function(x){
+ acute <- round(EMA(value, n = 1, ratio = 2/(7+1)), 2)
+ chronic <- round(EMA(value, n = 1, ratio = 2/(42+1)), 2)
+ acwr <- acute/chronic
+ return(acwr)
+}
+
+
+outliers <- function(x, limit=1.5) {
+
+  Q1 <- quantile(x, probs=.25, na.rm=TRUE)
+  Q3 <- quantile(x, probs=.75, na.rm=TRUE)
+  iqr <- Q3-Q1
+
+ upper_limit <- Q3 + (iqr*limit)
+ lower_limit <- Q1 - (iqr*limit)
+
+ ans <- x > upper_limit | x < lower_limit
+ return(ans)
+}
+
+remove_outliers <- function(df, cols = names(df), ...) {
+  for (col in cols) {
+    df <- df[!outliers(df[[col]], ...),]
+  }
+  df
+}
+
+
+
+source("R/functions_final.R")
+``` 
+
+# Load data
+
+
+## Get external load data
+
+Let us import the external load data of 2019-20 and 2020-21 seasons
+
+
+```{r load_wl}
+workload_2019_2020 <- read_csv("workload_2019_2020.csv") %>% 
+  arrange(code, Date) %>% 
+  tsibble(key = code, index=Date) %>% fill_gaps() %>%
+  mutate_at(-c(1:2), ~ tidyr::replace_na(.,0)) %>%
+  rename_all(janitor::make_clean_names)
+  
+
+workload_2020_2021 <- read_csv("workload_2020_2021.csv") %>%
+  arrange(code, Date) %>%
+  tsibble(key = code, index=Date) %>% fill_gaps() %>%
+  mutate_at(-c(1:2), ~ tidyr::replace_na(.,0)) %>%
+  rename_all(janitor::make_clean_names)
+```
+
+
+```{r create_wl}
+workload <- bind_rows(workload_2019_2020, workload_2020_2021) %>% 
+  tsibble(key = code, index=date) %>% fill_gaps() %>%
+  mutate_at(-c(1:2), ~ tidyr::replace_na(.,0)) %>%
+  mutate(dist_m = dist_m/10^3) %>% 
+  as_tibble() 
+```
+
+
+This is the total number of players 
+
+```{r}
+length(table(workload$code))
+```
+
+and the total number of days we have monitored per player
+
+```{r}
+table(workload$code)
+``` 
+
+Let us select specific features 
+
+```{r selec_features}
+workload <- workload %>% 
+  dplyr::select(code, date, duration_min, dist_m, dist_min_m_min,
+                rel_hsr_m, rel_hsr_min_m_min, hmld_m,
+                hmld_min_m_min, acc_3_m_s2_min_count_min,
+                acc_3_m_s2_dist_m, acc_3_m_s2_count,
+                dec_3_m_s2_min_count_min, dec_3_m_s2_dist_m,
+                dec_3_m_s2_count, pl_a_u, pl_min_a_u_min) 
+```
+
+
+
+## General data
+
+Let us import the general data of players
+
+```{r load_clinical, echo=FALSE, eval=FALSE}
+datos <- read_excel("dades JR excel.xlsx") %>% 
+  dplyr::select(-1)
+colnames(datos) <- c("code", "race", "position", "age", "height", "weight", "fat")
+datos <- datos %>% 
+  mutate(bmi = weight/height**2, 
+         age = as.numeric(ymd("2021-06-01") - as.Date(age))/365.25,
+         date = as.Date(date))
+```
+
+
+```{r load_clinical_ok}
+datos <- read_excel("peso_fat_1_temp.xlsx")
+colnames(datos) <- c("code", "race", "position", "age", "height", "weight", "fat", "date")
+datos <- datos %>% arrange(code, date) %>%
+  mutate(bmi = weight/height**2, 
+         age2 = as.numeric(as.Date(date) - as.Date(age))/365.25,
+         date = as.Date(date))
+```
+
+
+
+Summary of the data
+
+
+
+## Get injuries data
+
+Let us start by loading injuries
+
+```{r get_injuries}
+injuries <- read_excel("cuadro resumen 3 temporadas lesiones.xlsx")[,-1] %>%
+  rename_all(janitor::make_clean_names) %>%
+  rename(code = codi) %>% 
+  filter(data>=min(workload$date)) %>%
+  mutate(entreno_partit=ifelse(entreno_partit=="Patrtit", "Partit", entreno_partit)) %>%
+  group_by(code) %>% mutate(n_injur=1:n()) %>%
+  ungroup() 
+```
+
+These are the total number of injuries
+
+```{r}
+injuries %>%
+  dplyr::select(tipus_lesio, dreta_esquerra, entreno_partit, n_injur) %>% tbl_summary()
+
+
+injuries %>% filter(data<=dmy("30-06-2021")) %>%
+  dplyr::select(tipus_lesio, dreta_esquerra, entreno_partit, n_injur) %>% tbl_summary()
+
+injuries %>% filter(data>=dmy("1-07-2021")) %>%
+  dplyr::select(tipus_lesio, dreta_esquerra, entreno_partit, n_injur) %>% tbl_summary()
+
+
+``` 
+
+Create a variable `injury` Available/Injured using the information available on date of injury and keep only our type of injuries of interest
+
+```{r }
+injuries <- injuries %>%
+  arrange(code, data) %>% mutate(data=as_date(data)) %>%
+  mutate(injury = ifelse(is.na(data), "Available", "Injured")) %>% 
+  filter(!tipus_lesio%in%c("Cardiac", "Cutanea", "Cutani", "Ossia")) %>%
+  group_by(code) %>%
+  mutate(n_injur=1:n()) %>%
+  ungroup()
+# , "Cartileg"  
+```
+
+Select injuries for the analyzed period
+
+```{r}
+injuries <- injuries %>% filter(code%in%paste0("FCB", 1:24) & 
+                                    data<=dmy("30-06-2021"))
+```
+
+Let us describe the injuries
+
+```{r}
+injuries %>% 
+  dplyr::select(tipus_lesio, dreta_esquerra, entreno_partit, n_injur) %>% tbl_summary()
+```
+
+
+
+This is the distribution of injuries by player
+
+
+```{r}
+injuries %>% filter(injury=="Injured") %>% group_by(code) %>% 
+  dplyr::summarize(n())
+```
+
+
+Let us visualize the follow-up period
+
+```{r plot_training_period}
+workload %>% group_by(code) %>% summarise(min=min(date), max=max(date)) %>%
+  pivot_longer(cols = min:max, names_to = "time") %>%
+  ggplot(aes(x = value, y = code)) + 
+  geom_line(size = 1.5, alpha = 0.3) +
+  geom_point(size = 2) + 
+  labs(y = 'Internal code', x = "Date", 
+       title = 'Follow-up (trainning set)',
+       subtitle = 'From 15th September 2019 To 30th June 2021') +
+  geom_point(data=injuries, aes(x=data, y=code), 
+             shape=23, fill="red", color="red", size = 2.5) +
+  scale_x_date(limits = c(dmy("1-09-2019"), dmy("31-07-2021")))
+```
+
+
+Let us create the final dataset by merging workload information with injuries data
+
+```{r}
+temp <- injuries %>% filter(injury=="Injured")
+fcbData <- workload %>% full_join(temp,
+                                  by=c("code"="code", 
+                                       "date"="data")) %>%
+  arrange(code, date) %>%
+  mutate(injury = replace(injury, is.na(injury), "Available"),
+         injur = ifelse(injury=="Available", 0, 1)) %>%
+  group_by(code) %>%
+  fill(entreno_partit, .direction="downup") %>%
+  fill(re_injury, .direction="downup") %>%
+  fill(n_injur, .direction="down") %>%
+  mutate(n_injur=replace_na(n_injur, 0)) %>%
+# this is to recover the missings we introduce with full_join (to do not lose bmi, fat ,...)  
+  filter(!is.na(duration_min))
+
+
+# let us create time variables (Calendar, Day, Day_season)
+fcbData <- fcbData %>% 
+  mutate(Calendar = as.numeric(date - min(date) + 1)) %>%
+  group_by(code) %>% 
+  mutate(Day = Calendar - min(Calendar) + 1) %>% 
+  ungroup() %>%
+  mutate(season = ifelse(date <= dmy("30-06-2020"), "2019-20", "2020-21")) %>%
+  group_by(season, code) %>%
+  mutate(Day_season=1:n()) %>% 
+  ungroup()
+  
+
+# re-order columns
+fcbData <- fcbData %>% 
+  dplyr::select(code, date,  Calendar, Day, season, Day_season,
+                lesio:injury, injur, duration_min:pl_min_a_u_min)
+```
+
+
+The total number of injuries are
+
+```{r}
+table(fcbData$injury)
+```
+
+with this type of lesion
+
+```{r}
+temp <- table(fcbData$tipus_lesio)
+temp
+prop.table(temp)*100
+```
+
+side
+
+```{r}
+table(fcbData$dreta_esquerra)
+prop.table(table(fcbData$dreta_esquerra))
+```
+
+timing
+
+```{r}
+table(fcbData$entreno_partit)
+prop.table(table(fcbData$entreno_partit))
+```
+
+
+Number of recurrences
+
+```{r}
+temp <- fcbData %>% filter(injury=="Injured") %>% group_by(code) %>% 
+  dplyr::summarize(N=n()) 
+table(temp$N)
+prop.table(table(temp$N))*100
+```
+
+Injuries with 1000 hours
+
+```{r}
+sum(fcbData$injur)/sum(fcbData$duration_min/60)*1000
+
+a <- fcbData %>% filter(entreno_partit == "Entreno")
+sum(a$injur)/sum(a$duration_min/60)*1000
+
+a <- fcbData %>% filter(entreno_partit == "Partit")
+sum(a$injur)/sum(a$duration_min/60)*1000
+```
+
+
+# Quality control
+
+
+First, let us check for discrepancies in training load data
+
+```{r ,fig.cap="Quality control of player load. The figure depicts the correlation between player load and distance showing some discrepancies (they are not in the diagonal)"}
+ggplot(fcbData, aes( dist_min_m_min , pl_min_a_u_min)) +
+  geom_point() + facet_wrap(~code)
+```
+
+Let us impute by the predicted value
+
+
+```{r, eval=TRUE}
+mm <- lm(pl_min_a_u_min ~ dist_min_m_min, data=fcbData)
+fcbData <- fcbData %>% mutate(residuals = mm$residuals,
+                              predicted = predict(mm)) %>% 
+  mutate(pl_min_a_u_min = ifelse(abs(residuals)>3, predicted, pl_min_a_u_min)) %>%
+  dplyr::select(-c(residuals, predicted))
+```
+
+Now the relationship is as expected
+
+```{r fig.cap="Quality control of player load. The figure depicts the correlation between player load and distance showing a perfect agreement among these variables after quality control step."}
+ggplot(fcbData, aes( dist_min_m_min , pl_min_a_u_min)) +
+  geom_point() + facet_wrap(~code)
+```
+
+Now the same for these two variables
+
+```{r fig.cap="Quality control of player load. The figure depicts the correlation between player load and distance showing some discrepancies (they are not in the diagonal)"}
+ggplot(fcbData, aes( dist_m , pl_a_u)) + 
+  geom_point() + facet_wrap(~code)
+```
+
+
+
+```{r, eval=TRUE}
+mm <- lm(pl_a_u ~ dist_m, data=fcbData)
+fcbData <- fcbData %>% mutate(residuals = mm$residuals,
+                              predicted = predict(mm)) %>% 
+  mutate(pl_a_u = ifelse(abs(residuals)>3, predicted, pl_a_u)) %>%
+  dplyr::select(-c(residuals, predicted))
+```
+
+
+```{r fig.cap="Quality control of player load. The figure depicts the correlation between player load and distance showing a perfect agreement among these variables after quality control step."}
+ggplot(fcbData, aes( dist_m , pl_a_u)) +
+  geom_point() + facet_wrap(~code)
+```
+
+
+Now, let us check for possible outliers
+
+```{r}
+fcbData %>% dplyr::select(duration_min:pl_min_a_u_min) %>% summary()
+```
+
+
+Let us remove outliers and impute them by the median
+
+```{r}
+# remove outliers
+fcbData <- fcbData %>% mutate(
+  pl_min_a_u_min = ifelse(pl_min_a_u_min>5, 5, pl_min_a_u_min),
+  pl_a_u = ifelse(pl_a_u>300, 300, pl_a_u),
+  dist_min_m_min = ifelse(dist_min_m_min>400, 400, pl_min_a_u_min),
+  dist_m = ifelse(dist_m>12, 12, dist_m),
+  rel_hsr_m = ifelse(rel_hsr_m>130, 130,
+                             rel_hsr_m),
+  rel_hsr_min_m_min = ifelse(rel_hsr_min_m_min>25, 5,
+                             rel_hsr_min_m_min))
+
+fcbData %>% dplyr::select(duration_min:pl_min_a_u_min) %>% summary()
+```
+
+
+
+# Data visualization
+
+
+Here we can see the information for total load 
+
+
+```{r , fig.height=7}
+font <- 'Helvetica'
+fcbData.no <- fcbData %>% remove_outliers(cols = "pl_min_a_u_min", limit=3)
+p <- ggplot(fcbData.no, aes(date, pl_min_a_u_min, color=pl_min_a_u_min)) +
+  geom_line(size=1) +  geom_point() + facet_wrap('code', nrow=5) 
+
+p <- p + labs(y = 'External load', x = "Date", color='pl_min_a_u_min',
+       title = 'Player load (total per minute)',
+       subtitle = 'From July 2020 to December 2020') +
+  theme_minimal() +
+  geom_hline(yintercept = 0, color='darkgrey')
+
+p <- p +
+  theme(
+    plot.title = element_text(family = font,
+                              size = 20,
+                              face = "bold",
+                              color = "#b92928"),
+    plot.subtitle = element_text(family = font,
+                                 size = 16,
+                                 margin = ggplot2::margin(9,0,9,0),
+                                 color = '#b92928'),
+    strip.text = element_text(size  = 10,  hjust = 0, colour = '#142642'),
+  )
+
+p <- p + theme(axis.text.x=element_text(angle=60, hjust=1)) + 
+  scale_x_date(date_labels = "%b %Y",
+               limit=c(as.Date("2020-06-01"), as.Date("2020-12-31"))) +
+  labs(color="")
+
+p
+```
+
+Let us put our data in long format to facilitate downstream analyses
+
+```{r, data_long_format}
+fcbDataLong <- melt(fcbData, id.vars = c(1:19)) %>%
+    group_by(code, variable) %>%
+    arrange(date) %>%
+    # Mean
+    mutate(Daily = value)
+``` 
+
+
+## Get accumulated external load using DNLM 
+
+Let us create the crossbasis of all variables that will encode the cumulative effect of each workload variable (i.e GPS features)
+
+```{r}
+l_cb <- fcbDataLong %>% split(.$variable) %>% 
+   map(~ create_crossbasis(.x, Daily) ) 
+
+data_cp <- l_cb$duration_min$data_cp
+```
+
+
+# Load data (cont.)
+
+## Clinical data
+
+Let us add clinical data  
+
+
+```{r}
+fcbData <- fcbData %>% mutate(date2 = c(date[-1], ymd("2030-01-01")),
+                              trimester = cut(Day_season, 
+                                              c(-Inf, 60, 150, Inf ))) %>%
+  fuzzy_left_join(datos,
+                  by=c("code" = "code",
+                       "date" = "date",
+                       "date2" = "date"),
+                  match_fun = list(`==`, `<=`, `>`)) %>%
+  rename (code = code.x, date = date.x) %>%
+  group_by(code) %>%
+  fill(race:age2, .direction = "downup") %>% 
+  fill(trimester, .direction = "downup") %>% 
+  ungroup() 
+``` 
+
+
+
+```{r}
+time_dep_var <- fcbData %>% 
+  distinct(code, fat, bmi, n_injur, .keep_all = TRUE) %>%
+    dplyr::select(code, Day, trimester, fat, bmi, n_injur)
+
+data_cp <- data_cp %>%
+  fuzzy_left_join(time_dep_var,
+                  by=c("code" = "code",
+                       "enter" = "Day",
+                       "exit" = "Day"),
+                  match_fun = list(`==`, `<=`, `>`)) %>%
+  rename (code = code.x) %>%
+  group_by(code) %>%
+  fill(trimester:n_injur, .direction = "downup") %>% 
+  distinct(id, enter, exit, event, .keep_all = TRUE) %>%
+  ungroup()
+```
+
+## Genomic data
+
+Let us add genetic data (108 targeted SNPs). This is a fixed variable
+
+```{r}
+geno.f <- readxl::read_excel("data/geno_biallelic_females.xlsx") %>%
+  mutate(end = ymd(tidyr::replace_na(Fecha, ymd("2022-07-31"))),
+         time = as.numeric(end - ymd("2017-01-01")),
+         event = as.numeric(Lesion == "si"),
+         gender = "Female") %>% rename(Nom = 1, code = 2)
+
+ii <- grep("rs", colnames(geno.f), value = TRUE)
+ii.idx <- grep("rs", colnames(geno.f))
+gg.f.s <- setupSNP(geno.f, ii.idx, sep=":") %>% 
+  dplyr::select(c("code", all_of(ii))) %>%
+  mutate(rs1799750 = snp(as.character(rs1799750), name.genotypes = c("G/G", "G/-", "-/-")))
+```
+
+```{r}
+ss.geno <- summary(gg.f.s)
+
+idx <- ss.geno$HWE>0.01 & !is.na(ss.geno$HWE) &
+  ss.geno$missing<5 & !is.na(ss.geno$missing) &
+  ss.geno$major.allele.freq<95
+  
+sum(idx)  
+
+gg.f.s <- gg.f.s[,c(TRUE, idx)]
+```
+
+```{r}
+data_cp <- data_cp %>% left_join(gg.f.s, by = "code")  %>%
+  # make dominant due to low numbers (only 1)
+  mutate(rs1800255 = recode(rs1800255, "A/A" = "G/A"),
+         rs240736 = droplevels(rs240736)) %>%
+  mutate(across(starts_with("rs"), ~additive(snp(.))))
+```
+
+
+
+## Metabolomic data
+
+Let us add the metabolome as time-dependent variable.
+
+```{r}
+# read data
+metab1 <- read_xlsx("data/Metabolomica Femeni FCB 06 09 2019.xlsx") %>%
+  dplyr::select(-c(1,3)) %>% rename("code" = "FCB Code") %>% 
+  mutate(date = ymd(min(fcbData$date)))
+metab2 <- read_xlsx("data/metabolomica femeni FCB 27 07 2019.xlsx") %>%
+  dplyr::select(-c(1,3)) %>% rename("code" = "FCB code") %>% 
+  mutate(date = ymd("2019-07-27"))
+metab3 <- read_xlsx("data/Metabolomica femeni FCB 27 11 2019.xlsx") %>%
+  dplyr::select(-c(1,3)) %>% rename("code" = "FCB code") %>% 
+  mutate(date = ymd("2019-11-27"))
+metab4 <- read_xlsx("data/Metabolomica femenin 08 07 2020.xlsx") %>%
+  dplyr::select(-c(1,3)) %>% rename("code" = "Code FCB") %>% 
+  mutate(date = ymd("2020-07-31"))
+metab5 <- read_xlsx("data/Metabolomica femeni 03 12 2020.xlsx") %>%
+  dplyr::select(-c(1,3)) %>% rename("code" = "Code FCB")%>% 
+  mutate(date = ymd("2020-12-03")) %>% mutate(across(Arginine:Hypoxanthine, as.numeric))
+
+metab <- bind_rows(metab1, metab2, metab3, metab4, metab5) %>% 
+  relocate(date, .after = code) %>% 
+  rename_all(janitor::make_clean_names) %>%
+  arrange(code, date) 
+```
+
+
+Let us visualize the data
+
+
+```{r, plot_metab_norm, fig.cap="Metabolome data. Metabolite leves accross dates", fig.height=14}
+
+metab_norm <- metab %>% dplyr::select(arginine:hypoxanthine) %>% as.matrix() %>%
+  preprocessCore::normalize.quantiles() %>% 
+  as_tibble() %>% 
+  set_colnames(colnames(metab[-c(1:2)])) %>% bind_cols(metab[,c("code", "date")])
+  
+metab_norm %>%
+pivot_longer(arginine:hypoxanthine, names_to="metabolites")  %>% 
+  ggplot (aes(group=date, y = value, colour=date)) + geom_boxplot() + 
+  facet_wrap(vars(metabolites), scales="free_y", ncol=5) +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())
+
+```
+
+Le us pre-process data. Let us start by looking at missing information
+
+```{r}
+metab_norm %>% pivot_longer(arginine:hypoxanthine, names_to="metabolites") %>%
+  group_by(metabolites) %>% 
+  dplyr::summarize(porcentaje_NA = 100 * sum(is.na(value)) / length(value)) %>%
+  ggplot(aes(x = reorder(metabolites, desc(porcentaje_NA)), y = porcentaje_NA)) +
+    geom_col() +
+    labs(title = "Porcentaje valores ausentes por variable",
+         x = "Variable", y = "Porcentaje NAs") +
+    theme(axis.text.x = element_text(angle = 90, hjust=1))
+```
+
+Now let us pre-process the data: impute missing, remove variables with low variability and scale data
+
+```{r}
+# create object recipe
+metab_recipe <- recipe(code ~ ., data = metab) %>% 
+  step_rm(c("homocystine", "isoleucine", "phosphoserine", "code", "date")) %>%
+  step_nzv(all_numeric_predictors()) %>%
+  step_impute_knn(c("glutamine", "ethanolamine")) %>%
+  step_normalize(all_numeric_predictors()) 
+#  step_corr(all_numeric_predictors())
+#  step_outliers_maha(all_numeric()) %>%
+#  step_outliers_lookout(all_numeric(), -contains(r"(.outliers)"), -all_outcomes()) %>% 
+#  step_outliers_remove(contains(r"(.outliers)"))
+
+metab_preproc <- prep(metab_recipe, training = metab) %>%
+  bake(new_data = NULL) %>% bind_cols(metab[,c("code", "date")])
+```
+
+
+```{r fig.cap="Metabolite data. Data after pre-processing", fig.height=14}
+metab_preproc %>%
+pivot_longer(arginine:hypoxanthine, names_to="metabolites")  %>% 
+  ggplot (aes(group=date, y = value, colour=date)) + geom_boxplot() + 
+  facet_wrap(vars(metabolites), scales="free_y", ncol=7) +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())
+
+```
+
+Total variables removed  ... 
+
+
+Let us add the data
+
+```{r}
+# add metabolome data to workload
+fcbData.metab <- fcbData %>% 
+  left_join(metab_preproc, by = c("code" = "code",
+                         "date" = "date")) %>% 
+  filter(!code%in%c("FCB24", "FCB1", "FCB2", "FCB19", "FCB22")) 
+```
+
+Let us visualize the relationship between metabolites and injuries
+
+```{r,  plot_hydroxyanthranilic_acid}
+fcbData.metab %>% group_by(code) %>% 
+  mutate(y = na.approx(hydroxyanthranilic_acid, na.rm=FALSE)) %>% ungroup() %>%
+  ggplot(aes(x=date, y=hydroxyanthranilic_acid)) + 
+  geom_point() + geom_line(aes(x=date, y=y), col="blue") +
+  geom_point(data=fcbData.metab%>%filter(injur==1), aes(x=date, y=-2), col="red") + 
+  ylim(-2,3) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  facet_wrap(~code)
+```
+
+```{r, plot_metabo_fig}
+fcbData.metab %>% group_by(code) %>% 
+  mutate(y = na.approx(alanine, na.rm=FALSE)) %>% ungroup() %>%
+  ggplot(aes(x=date, y=alanine)) + 
+  geom_point() + geom_line(aes(x=date, y=y), col="blue") +
+  geom_point(data=fcbData.metab%>%filter(injur==1), aes(x=date, y=-2), col="red") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  facet_wrap(~code)
+```
+
+
+Let us interpolate all metabolites
+
+```{r}
+fcbData.metab <- fcbData.metab %>% group_by(code) %>% 
+  mutate(across(arginine:hypoxanthine, ~na.approx(., na.rm=FALSE))) %>%
+  ungroup()
+```
+
+
+Let us add data to counting process
+
+```{r}
+temp_cb <- create_crossbasis(fcbData.metab, pl_min_a_u_min)
+data_cb_pl_metab <- temp_cb$cb
+data_cp_metab <- temp_cb$data_cp
+
+
+time_dep_metab <- fcbData.metab %>% filter(date%in%metab$date) %>%
+    dplyr::select(code, Day, bmi, fat, n_injur, arginine:hypoxanthine)
+
+data_cp_metab <- data_cp_metab %>% filter(code%in%time_dep_metab$code) %>%
+  fuzzy_left_join(time_dep_metab,
+                  by=c("code" = "code",
+                       "enter" = "Day",
+                       "exit" = "Day"),
+                  match_fun = list(`==`, `<=`, `>`)) %>%
+  rename (code = code.x) %>%
+  group_by(code) %>%
+  mutate(across(arginine:hypoxanthine, ~na.spline(.))) %>%
+  fill(bmi:n_injur, .direction = "downup") %>% 
+  ungroup() 
+
+
+data_cp_metab <- data_cp_metab %>% left_join(gg.f.s, by = "code")  %>%
+  # make dominant due to low numbers (only 1)
+  mutate(rs1800255 = recode(rs1800255, "A/A" = "G/A"),
+         rs240736 = droplevels(rs240736)) %>%
+  mutate(across(starts_with("rs"), ~additive(snp(.))))
+
+```
+
+
+
+# Data modelling
+
+## External load
+
+Let us check baseline model
+
+```{r}
+baseline <- coxph(Surv(enter, exit, event) ~ poly(fat,2) +  
+                    frailty.gaussian(id), 
+                  data=data_cp, 
+                 y = FALSE, ties = "efron")
+summary(baseline)
+anova(baseline)
+```
+
+
+
+```{r}
+ii <- !is.na(l_cb$pl_min_a_u_min$cb[,1])
+baseline.rm <- coxph(Surv(enter, exit, event) ~  frailty.gaussian(id) + 
+                       poly(fat,2), 
+                  data=data_cp[ii, ], 
+                 y = FALSE, ties = "efron")
+summary(baseline.rm)
+anova(baseline.rm)
+```
+
+
+Let us fit the univariate models
+
+```{r}
+res_load <- l_cb %>% map (pluck(1)) %>%
+  map(.,  ~ coxph(Surv(enter, exit, event) ~ .x + poly(fat, 2) +
+                    frailty.gaussian(id),   data=data_cp, 
+                 y = FALSE, ties = "efron"))
+
+```
+
+
+Compute p-value 
+
+
+
+```{r}
+p_load <- map_dbl(res_load, ~ anova(.x)[2,4])
+final_res <- tibble(feature=names(res_load) , data="workload", 
+                    effect=NA, p_value=p_load)
+kable(final_res, digits=c(0,0,2,4)) %>% kable_styling()
+``` 
+
+Now, let us visualize some results. 
+
+
+- This is for player load
+
+```{r}
+data_cb_pl <- create_crossbasis(fcbData, pl_min_a_u_min)$cb 
+mod_dnlm_pl <- coxph(Surv(enter, exit, event) ~ data_cb_pl + poly(fat,2) +
+                    frailty.gaussian(id), data=data_cp, 
+                 y = FALSE, ties = "efron")
+anova(mod_dnlm_pl)
+```
+
+Create predictions
+
+```{r}
+cuts <- seq(0, 4, .1 )
+preds_pl <- crosspred(basis = data_cb_pl, mod_dnlm_pl, 
+                  at=cuts, cen = 0, ci.level = 0.90, cumul = TRUE)
+``` 
+
+3D-plot
+
+```{r, plot_3d_load}
+plot3D_pred(preds_pl, xlab="External workload",
+                       tit="Risk on cummulative PL")
+``` 
+
+```{r}
+k <- "3"
+pp <- tibble(lag = c(colnames(preds_pl$matRRfit)), fit=c(preds_pl$matRRfit[k,]),
+             lower = c(preds_pl$matRRlow[k,]), upper=c(preds_pl$matRRhigh[k,]),
+             se.fit=c(preds_pl$matse[k,]), lag2=1:(ncol(preds_pl$matRRfit)))
+
+
+pp %>%   ggplot(aes(x=lag2, y=fit)) + 
+  geom_point(col="blue") + geom_line(col="blue", size=2) +  
+  geom_ribbon(aes(ymin=lower, ymax=upper), linetype=2, fill="blue", col="blue", alpha=0.1) + 
+  scale_x_continuous(breaks = pp$lag2, labels=pp$lag) + xlab("Lags") +
+  ylab("Hazard ratio (HR)") + geom_hline(yintercept=1, linetype="dashed", size=1.5) +
+  ggtitle("Today's player load equal to 3.0") + 
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12),
+        axis.text.x=element_text(angle=45, hjust=1),
+        plot.title = element_text(size=14, face="bold"))
+```
+
+We can see how the risk changes for different training load
+
+
+```{r}
+pp <- preds_pl$matRRfit %>% as.data.frame() %>% 
+  tibble::rownames_to_column() %>% rename("workload" = "rowname") %>%
+  pivot_longer(!workload, names_to="lags", values_to = "rr") %>%
+  mutate(workload = as.numeric(workload)) %>%
+  mutate(lags = as_factor(lags))
+  
+
+mid <- mean(pp$workload) 
+ggplot(pp, aes(lags, rr, group = workload, col=workload)) + 
+  stat_smooth(method="loess", formula = 'y~x', se = FALSE) + 
+  scale_color_gradient2(midpoint = mid, low = "blue", mid = "orange",
+                        high = "red", space = "Lab",
+                        name="Player's \nload") + 
+  ylab("Hazard ratio (HR)") + xlab("Lags") + 
+  ggtitle("Risk of injury varying today's player load", 
+          subtitle = "From current day to 28th day") +
+  geom_hline(yintercept=1, linetype="dashed", size=1.5) +
+  theme(
+    plot.title = element_text(size = 14,
+                              face = "bold",
+                              color = "black"),
+    plot.subtitle = element_text(size = 10,
+                                 margin = ggplot2::margin(9,0,9,0),
+                                 color = "black"),
+    axis.text.x=element_text(angle=60, hjust=1)) 
+```
+
+
+
+```{r}
+lag_fixed <- "lag0"
+colnumber <- which(colnames(preds_pl$matRRfit) == lag_fixed)
+pp <- as_tibble(preds_pl$matRRfit[,colnumber]) %>% 
+  rename(coef = value) %>% 
+  mutate(load = preds_pl$predvar,
+         lower = preds_pl$matRRlow[,colnumber],
+         upper = preds_pl$matRRhigh[,colnumber])
+
+pp %>% ggplot(aes(x = load, y = coef, group = 1)) +
+  geom_hline(yintercept = 1, alpha = 0.3, size = 1) +
+  geom_ribbon(aes(min = lower, max = upper), 
+              alpha = 0.1, linetype=2, fill = "blue", col = "blue") +
+  geom_line(size = 2, color = "blue") +
+  xlab("Player load") +
+  ylab("Hazard ratio (HR)") + scale_y_continuous(breaks=c(1,2,3,4,5,10)) +
+  ggtitle("Risk on current day") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12),
+        plot.title = element_text(size=14, face="bold"))
+  
+```
+
+```{r}
+lag_fixed <- "lag27"
+colnumber <- which(colnames(preds_pl$matRRfit) == lag_fixed)
+pp <- as_tibble(preds_pl$matRRfit[,colnumber]) %>% 
+  rename(coef = value) %>% 
+  mutate(load = preds_pl$predvar,
+         lower = preds_pl$matRRlow[,colnumber],
+         upper = preds_pl$matRRhigh[,colnumber])
+
+pp %>% ggplot(aes(x = load, y = coef, group = 1)) +
+  geom_hline(yintercept = 1, alpha = 0.3, size = 1) +
+  geom_ribbon(aes(min = lower, max = upper), 
+              alpha = 0.1, linetype=2, fill = "blue") +
+  geom_line(size = 0.75, color = "blue") +
+  xlab("Player's workload") +
+  ylab("Hazard risk (HR)") + 
+  ggtitle("Risk on 28th day") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12),
+        plot.title = element_text(size=16, face="bold"))
+  
+```
+
+```{r , echo=FALSE, eval=FALSE}
+pp <- tibble(lag = c(names(preds_pl$allfit)), 
+             fit=c(preds_pl$allRRfit),
+             lower = c(preds_pl$allRRlow),
+             upper = c(preds_pl$allRRhigh),
+             lag2=1:(length(preds_pl$allRRfit)))
+
+
+pp %>%   ggplot(aes(x=lag2, y=fit)) + 
+  geom_point(col="blue") +
+  geom_line(col="blue", size=2) +  
+  geom_ribbon(aes(ymin=lower, ymax=upper), linetype=2, 
+              fill="blue", col="blue", alpha=0.1) + 
+  scale_x_continuous(breaks = pp$lag2, labels=pp$lag) +
+  xlab("Player's workload") +
+  ylab("Hazard Risk") + 
+  geom_hline(yintercept=1, linetype="dashed", size=1.5) +
+  ggtitle("Cumulative over all lags") + ylim(0,5)
+```
+
+
+- This is for decelerations 
+
+```{r}
+data_cb_dec <- create_crossbasis(fcbData, dec_3_m_s2_count)$cb 
+mod_dnlm_dec <- coxph(Surv(enter, exit, event) ~ data_cb_dec + poly(fat,2) +
+                    frailty.gaussian(id), data=data_cp, 
+                 y = FALSE, ties = "efron")
+anova(mod_dnlm_dec)
+```
+
+Create predictions
+
+```{r}
+cuts <- seq(0, 100, 10)
+preds_dec <- crosspred(basis = data_cb_dec, mod_dnlm_dec, 
+                  at=cuts, cen = 0, cumul = TRUE, ci.level = 0.90)
+``` 
+
+3D-plot
+
+```{r, plot_3d_dec}
+plot3D_pred(preds_dec, xlab="Decelerations", 
+                       tit="Decelerations")
+
+``` 
+
+```{r}
+lag_fixed <- "lag14"
+colnumber <- which(colnames(preds_dec$matRRfit) == lag_fixed)
+pp <- as_tibble(preds_dec$matRRfit[,colnumber]) %>% 
+  rename(coef = value) %>% 
+  mutate(load = preds_dec$predvar,
+         lower = preds_dec$matRRlow[,colnumber],
+         upper = preds_dec$matRRhigh[,colnumber])
+
+pp %>% ggplot(aes(x = load, y = coef, group = 1)) +
+  geom_hline(yintercept = 1, alpha = 0.3, size = 1) +
+  geom_ribbon(aes(min = lower, max = upper), 
+              alpha = 0.1, linetype=2, fill = "blue", col = "blue") +
+  geom_line(size = 2, color = "blue") +
+  xlab("Number of decelerations") +
+  ylab("Odds ratio (OR)") + scale_y_continuous(breaks=c(1,2,3,4,5,10)) +
+  ggtitle("Risk on current day") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12),
+        plot.title = element_text(size=14, face="bold"))
+  
+```
+
+
+- This is for high speed rate (HSR)   
+
+```{r}
+data_cb_hsr <- create_crossbasis(fcbData, rel_hsr_m)$cb 
+mod_dnlm_hsr <- coxph(Surv(enter, exit, event) ~ data_cb_hsr + poly(fat,2) +
+                    frailty.gaussian(id), data=data_cp, 
+                 y = FALSE, ties = "efron")
+anova(mod_dnlm_hsr)
+```
+
+Create predictions
+
+```{r}
+
+cuts <- seq(0, 40, 1)
+preds_hsr <- crosspred(basis = data_cb_hsr, mod_dnlm_hsr, 
+                  at=cuts, cen = 0, cumul = TRUE)
+``` 
+
+3D-plot
+
+```{r}
+plot3D_pred(preds_hsr, xlab="HSR", 
+            tit="High speed run (HSR)")
+``` 
+
+
+- This is for High Metabolic load distance 
+
+```{r}
+data_cb_hmld <- create_crossbasis(fcbData, hmld_m)$cb 
+mod_dnlm_hmld <- coxph(Surv(enter, exit, event) ~ data_cb_hmld + poly(fat,2) +
+                    frailty.gaussian(id), data=data_cp, 
+                 y = FALSE, ties = "efron")
+anova(mod_dnlm_hmld)
+```
+
+Create predictions
+
+```{r}
+cuts <- seq(0, 2000, 100)
+preds_hmld <- crosspred(basis = data_cb_hmld, mod_dnlm_hmld, 
+                  at=cuts, cen = 0, cumul = TRUE)
+``` 
+
+3D-plot
+
+```{r}
+plot3D_pred(preds_hmld, xlab="HMLD", tit="High Metabolic Load Distance (HMLD)")
+
+``` 
+
+
+- This is for accelerations 
+
+```{r}
+data_cb_acc <- create_crossbasis(fcbData, acc_3_m_s2_dist_m)$cb 
+mod_dnlm_acc <- coxph(Surv(enter, exit, event) ~ data_cb_acc + poly(fat,2) +
+                    frailty.gaussian(id), data=data_cp, 
+                 y = FALSE, ties = "efron")
+anova(mod_dnlm_acc)
+```
+
+
+## Genetics
+
+Let us perform genetic association analyses assuming and additive model
+
+```{r}
+res_snp <- data_cp %>% dplyr::select(starts_with("rs")) %>% 
+  map(., ~ mod.SNP(.x))
+res_snp_adj <- data_cp %>% dplyr::select(starts_with("rs")) %>% 
+  map(., ~mod.SNP.adj(.x))
+res_snp_adj_dom <- data_cp %>% dplyr::select(starts_with("rs")) %>% 
+  map(., ~mod.SNP.adj.dom(.x))
+
+
+
+p_snp <- res_snp %>% map_dbl(~ summary(.x)$coef[4,6])
+p_snp_adj_add <- res_snp_adj %>% map_dbl(~ summary(.x)$coef[8,6])
+p_snp_adj_dom <- res_snp_adj_dom %>% map_dbl(~ summary(.x)$coef[8,6])
+
+effect_snp <- map_dbl(res_snp, ~ coef(.x)[3])
+effect_snp_adj <- map_dbl(res_snp_adj, ~ coef(.x)[7])
+effect_snp_dom <- map_dbl(res_snp_adj, ~ coef(.x)[7])
+```
+
+The SNPs that are statistically significant are
+
+```{r}
+sel_snp_adj_add <- names(which(p_snp_adj_add<0.05))
+sel_snp_adj_add
+sel_snp_adj_dom <- names(which(p_snp_adj_dom<0.05))
+sel_snp_adj_dom
+sel_snp_adj <- unique(c(sel_snp_adj_add, sel_snp_adj_dom))
+sel_snp_adj
+```
+
+Let us add the results to the previous ones
+
+```{r}
+temp <- tibble(feature=sel_snp_adj , data="genetics", 
+               effect=exp(effect_snp[sel_snp_adj]), 
+               p_value=p_snp[sel_snp_adj],
+               effect_adj=exp(effect_snp_adj[sel_snp_adj]), 
+               p_value_adj=p_snp_adj_add[sel_snp_adj])
+final_res <- bind_rows(final_res, temp)
+kable(final_res, digits=c(0,0,2,4,2,4)) %>% kable_styling()
+```
+
+These are the alleles and whether they are in HWE
+
+```{r}
+ss.geno[sel_snp_adj,]
+```
+
+Here you have the confidence intervals
+
+
+```{r}
+map(res_snp_adj[sel_snp_adj], ~exp(confint(.x)[7,]))
+map(res_snp_adj_dom[sel_snp_adj_dom], ~exp(confint(.x)[7,]))
+```
+
+
+Let us see the distribution of samples and injuries
+
+```{r}
+gg.f.s %>% dplyr::select(sel_snp_adj) %>% tbl_summary()
+```
+
+```{r}
+data_cp %>% filter(event == 1) %>% 
+  dplyr::select(sel_snp_adj) %>% tbl_summary()
+```
+
+
+
+```{r}
+p1 <- plotKM(rs1799750, lab=c("G/G", "G/-", "-/-"), p = p_snp_adj_add["rs1799750"]) + 
+  ggtitle("rs1799750") 
+p2 <- plotKM(rs699947, lab=c("C/C", "C/A + A/A"), p = p_snp_adj_dom["rs699947"], dominant =TRUE) + 
+  ggtitle("rs699947")
+p3 <- plotKM(rs9406328, lab=c("G/G", "G/A", "A/A"), p = p_snp_adj_add["rs9406328"]) +
+  ggtitle("rs9406328")
+p4 <- plotKM(rs162502, lab=c("G/G", "G/A + A/A"), p = p_snp_adj_dom["rs162502"], dominant = TRUE) + 
+  ggtitle("rs162502")
+p5 <- plotKM(rs4903399, lab=c("C/C + C/T", "T/T"), p = p_snp_adj_dom["rs4903399"], recessive = TRUE) + 
+  ggtitle("rs4903399")
+p6 <- plotKM(rs516115, lab=c("A/A", "A/G + G/G"), p = p_snp_adj_dom["rs516115"], dominant = TRUE) + 
+  ggtitle("rs516115")
+
+arrange_ggsurvplots(list(p1,p2,p3,p4, p5, p6), ncol = 3, nrow = 2)
+```
+
+
+Let us create a polygenic risk score
+
+```{r}
+final_snp <- step(update(res_snp_adj$rs1800896, ~. - additive(snp) + 
+                           rs699947 + rs4903399 + rs1799750 +  rs9406328 + rs162502 + 
+                           rs516115),
+                  scope = list(lower=as.formula(.~data_cb_pl+frailty.gaussian(id))),
+              trace = FALSE)
+summary(final_snp)
+```
+
+
+```{r}
+sel <- sel_snp_adj
+effect <- effect_snp_adj[sel]
+pos <- which(colnames(data_cp) %in% sel)
+score.nw <- PredictABEL::riskScore(effect*-1, data_cp, pos, "unweighted")
+
+final_snp_score_nw <- coxph(Surv(enter, exit, event) ~ data_cb_pl + poly(fat,2) +
+                          frailty.gaussian(id) + score.nw, data=data_cp, 
+                        y = FALSE, ties = "efron")
+
+km_snp_score_nw <- survfit(Surv(enter, exit, event) ~ cut(score.nw, c(-Inf, 3, 5, Inf)), data=data_cp)
+
+plot_score <- survminer::ggsurvplot(km_snp_score_nw,
+        legend.labs = c("0-3", "4-5", "6+"),
+        fun = "event",
+        legend = "right",
+        ggtheme = theme(axis.title = element_text(size=11)),
+                  plot.title=element_text(size=12),
+                  plot.subtitle=element_text(size=10))  + 
+  ylab("Probability of injury") + 
+  xlab ("Time (days)") +
+  guides(
+    fill = guide_legend(title = 'Genetic \nScore'),
+    color = guide_legend(title = 'Genetic \n Score')
+  )
+  
+  plot_score$plot <- plot_score$plot + ylim(0,1) +
+    annotate("text", x=0, y=Inf, 
+             label = paste("p genetic score =", 
+                           formatC(summary(final_snp_score_nw)$coef[8,6],2)),
+             hjust=0, vjust=1, size=3) 
+  
+plot_score <- plot_score + 
+  ggtitle("Injury risk - genetics", 
+          subtitle = "Risk according to number \nof protective alleles")
+```
+
+```{r}
+plot_score_n <- data_cp %>% mutate(gs=cut(score.nw, c(-Inf, 3, 5, Inf), label=c('0-3', '4-5', '6+'))) %>%
+  distinct(id, event, gs) %>% 
+  mutate(injury=factor(event, labels = c("no", "yes"))) %>%
+  group_by(gs, injury) %>% summarize(counts=n()) %>% 
+  ggplot(aes(x = gs, y =counts, fill=injury)) +
+  geom_bar(stat='identity', position = 'dodge') +
+  scale_fill_brewer(type="qual", palette="Paired") + 
+  ylab("Number of players") + 
+  xlab("Number of protective alleles") + 
+  scale_y_continuous(breaks=1:9) +
+  ggtitle("Genetic score")
+
+plot_score_n + theme_bw(base_size = 18)   
+```
+
+
+## Metabolome
+
+Let us perform metabolome data analysis
+
+
+```{r metabo_results}
+res_metabo <- data_cp_metab %>% 
+  dplyr::select(arginine:hypoxanthine) %>% 
+  map(., ~mod.metabo(.))
+
+
+res_metabo_adj <- data_cp_metab %>% 
+  dplyr::select(arginine:hypoxanthine) %>% 
+  map(., ~mod.metabo.adj(.))
+
+
+p_metabo <- res_metabo %>% map_dbl(~ anova(.x)[2,4])
+p_metabo_adj <- res_metabo_adj %>% map_dbl(~ anova(.x)[2,4])
+  
+effect_metabo <- map_dbl(res_metabo, ~ coef(.x)[1])
+effect_metabo_adj <- map_dbl(res_metabo_adj, ~ coef(.x)[1])
+```
+
+The metabolites that are statistically significant are
+
+```{r}
+sel_metabo <- names(which(p_metabo<0.05))
+sel_metabo
+sel_metabo_adj <- names(which(p_metabo_adj<0.05))
+sel_metabo_adj
+```
+
+Let us add the results to the previous ones
+
+```{r}
+temp <- tibble(feature=sel_metabo_adj , data="metabolome", 
+               effect=effect_metabo[sel_metabo_adj], 
+               p_value=p_metabo[sel_metabo_adj],
+               effect_adj=effect_metabo_adj[sel_metabo_adj], 
+               p_value_adj=p_metabo_adj[sel_metabo_adj])
+final_res <- bind_rows(final_res, temp)
+kable(final_res, digits=c(0,0,2,4,2,4)) %>% kable_styling()
+```
+
+
+```{r}
+write.table(final_res, file="final_res.txt", sep="\t",
+            quote = FALSE, row.names=FALSE)
+```
+
+
+Let us visualize the results
+
+```{r}
+library(ggrepel)
+de <- data.frame(lab = names(p_metabo_adj),
+                 fold_change = exp(effect_metabo_adj),
+                 adj_p_val = p_metabo_adj,
+                 de = ifelse(p_metabo_adj<0.05, "yes", "no"))
+
+de$lab[de$lab=="x5_hydroxy_tryptophan"] <- "5-HTP"
+rownames(de)[de$lab=="x5_hydroxy_tryptophan"] <- "5-HTP"
+
+
+de <- de %>%
+  mutate(gene_type = case_when(fold_change >= 1 & adj_p_val <= 0.05 ~ "up",
+                               fold_change <= 1 & adj_p_val <= 0.05 ~ "down",
+                               TRUE ~ "ns")) 
+
+cols <- c("up" = "blue", "down" = "red", "ns" = "darkgrey") 
+sizes <- c("up" = 2, "down" = 2, "ns" = 1) 
+alphas <- c("up" = 1, "down" = 1, "ns" = 0.5)
+
+sig_il_genes <- de %>%
+  filter(lab %in% c("b_alanine", "serotonine", "5-HTP"))
+
+
+up_il_genes <- de %>%
+  filter(lab == "b_alanine")
+
+down_il_genes <- de %>%
+  filter(lab %in% c("serotonine", "5-HTP"))
+
+
+plot_metab <- ggplot(data = de,
+                     aes(x = log2(fold_change),
+                         y = -log10(adj_p_val))) + 
+  geom_point(aes(colour = gene_type), 
+             shape = 16,
+             size = 3) + 
+  geom_point(data = up_il_genes,
+             shape = 21,
+             size = 3, 
+             fill = "red", 
+             colour = "black") + 
+  geom_point(data = down_il_genes,
+             shape = 21,
+             size = 3, 
+             fill = "blue", 
+             colour = "black") + 
+  geom_hline(yintercept = -log10(0.05),
+             linetype = "dashed") + 
+  geom_vline(xintercept = c(-0.05, 0.05),
+             linetype = "dashed") +
+  geom_label_repel(data = sig_il_genes,   
+                   aes(label = lab),
+                   force = 2,
+                   nudge_y = 1) +
+  scale_colour_manual(values = cols) + 
+  scale_x_continuous(breaks = c(seq(-.5, .5, .1)),     
+                     limits = c(-.4, .4)) +
+  labs(title = "Injury risk effect - metabolomics",
+       x = "Effect",
+       y = "-log10(P-value)",
+       colour = "Standardize \nvalue \nchange") 
+
+plot_metab + theme_grey(base_size = 21)
+```
+
+Let us create a multivariate model
+
+```{r}
+model_metabo <- step(update(res_metabo_adj$arginine, ~. - x + b_alanine +
+                            serotonine + x5_hydroxy_tryptophan), 
+                     scope = list(lower=as.formula(.~data_cb_pl_metab)))
+summary(model_metabo)
+```
+
+
+## Final model
+
+Let us estimate a multi-modal predictive model
+
+```{r estimate_final_model, eval = TRUE}
+model_final <-coxph(Surv(enter, exit, event) ~ data_cb_pl_metab   + poly(fat,2) +
+                  rs699947 + rs1799750 + rs9406328 + rs162502 + rs4903399 + rs516115 +
+            b_alanine + serotonine + 
+            x5_hydroxy_tryptophan +
+        frailty.gaussian(id), data=data_cp_metab, 
+      y = FALSE, ties = "efron")
+summary(model_final)
+```
+
+
+
+# Final results
+
+Let us compare C-index for each model. First let us compute the leave-one-out cross-validation estimation
+
+
+```{r}
+colnames(data_cb_pl_metab) <- paste0("pl_", colnames(data_cb_pl_metab))
+o <- complete.cases(data_cb_pl_metab)
+data_cp_ok <- data_cp_metab %>% filter(o) %>% 
+  bind_cols(data_cb_pl_metab[o,])
+
+ids <- unique(data_cp_ok$code)
+n <- length(ids)
+
+c_index <- list()
+
+loo_models <- vector(mode = "list", length = n)
+for(i in 1:n){
+  df_tmp <- filter(data_cp_ok, code!=ids[i])
+  mod <- coxph(Surv(enter, exit, event) ~ 
+                 pl_v1.l1 + pl_v1.l2 + pl_v2.l1 + pl_v2.l2 +
+                 poly(fat, 2) + frailty.gaussian(id),
+               data = df_tmp, 
+               y = FALSE, ties = "efron")
+  
+  loo_models[[i]] <- mod
+}
+
+c_index[[1]] <- map(loo_models, ~ summary(.)$concordance[1]) %>% 
+  bind_cols(
+    .name_repair = ~ vctrs::vec_as_names(
+      ..., repair = "unique", quiet = TRUE)) %>% 
+  rowMeans() %>% round(3)*100
+
+
+
+loo_models <- vector(mode = "list", length = n)
+for(i in 1:n){
+  df_tmp <- filter(data_cp_ok, code!=ids[i])
+  mod <- coxph(Surv(enter, exit, event) ~ 
+                 pl_v1.l1 + pl_v1.l2 + pl_v2.l1 + pl_v2.l2 +
+                 poly(fat, 2) + 
+                 rs699947 + rs1799750 + rs9406328 + 
+                 rs162502 + rs4903399 + rs516115 + 
+                 frailty.gamma(id),
+               data = df_tmp, 
+               y = FALSE, ties = "efron")
+  
+  loo_models[[i]] <- mod
+}
+
+c_index[[2]] <- map(loo_models, ~ summary(.)$concordance[1]) %>%
+  bind_cols(
+    .name_repair = ~ vctrs::vec_as_names(
+      ..., repair = "unique", quiet = TRUE)) %>% 
+  rowMeans() %>% round(3)*100
+
+
+
+loo_models <- vector(mode = "list", length = n)
+for(i in 1:n){
+  df_tmp <- filter(data_cp_ok, code!=ids[i])
+  mod <- coxph(Surv(enter, exit, event) ~ 
+                 pl_v1.l1 + pl_v1.l2 + pl_v2.l1 + pl_v2.l2 +
+                 poly(fat, 2) + 
+                 b_alanine + serotonine + x5_hydroxy_tryptophan + 
+                 frailty.gamma(id),
+               data = df_tmp, 
+               y = FALSE, ties = "efron")
+  
+  loo_models[[i]] <- mod
+}
+
+c_index[[3]] <- map(loo_models, ~ summary(.)$concordance[1]) %>% 
+  bind_cols(
+    .name_repair = ~ vctrs::vec_as_names(
+      ..., repair = "unique", quiet = TRUE)) %>% 
+  rowMeans() %>% round(3)*100
+
+
+
+loo_models <- vector(mode = "list", length = n)
+for(i in 1:n){
+  df_tmp <- filter(data_cp_ok, code!=ids[i])
+  mod <- coxph(Surv(enter, exit, event) ~ 
+                 pl_v1.l1 + pl_v1.l2 + pl_v2.l1 + pl_v2.l2 +
+                 poly(fat, 2) + 
+                 rs699947 + rs1799750 + rs9406328 + 
+                 rs162502 + rs4903399 + rs516115 +
+                 b_alanine + serotonine + x5_hydroxy_tryptophan +
+                 frailty.gamma(id),
+               data = df_tmp, 
+               y = FALSE, ties = "efron")
+  
+  loo_models[[i]] <- mod
+}
+
+c_index[[4]] <- map(loo_models, ~ summary(.)$concordance[1]) %>% 
+  bind_cols(
+    .name_repair = ~ vctrs::vec_as_names(
+      ..., repair = "unique", quiet = TRUE)) %>% 
+  rowMeans() %>% round(3)*100
+```
+
+
+Then, let us create the plot
+
+
+```{r}
+my_palette = c(brewer.pal(5, "Set1")[c(1,3,4,5)], brewer.pal(5, "Pastel1")[c(2,5,1,3)])
+ref <- data_cp$event[!is.na(l_cb$pl_min_a_u_min$cb[,1])]
+ref_metab <- data_cp_metab$event[!is.na(data_cb_pl_metab[,1])]
+
+roc <- list()
+model_snp <- update(model_final, . ~ . - b_alanine - serotonine - x5_hydroxy_tryptophan)
+
+roc[[1]] <- roc(ref, predict(res_load$pl_min_a_u_min, type="expected"))
+roc[[2]] <- roc(ref_metab, 
+                predict(model_snp, type="expected"))
+roc[[3]] <- roc(ref_metab, 
+                predict(model_metabo, type="expected"))
+roc[[4]] <- roc(ref_metab, 
+                predict(model_final, type="expected"))
+
+sens <- roc%>%map(pluck(2))%>%unlist()
+spec <- roc%>%map(pluck(3))%>%unlist()
+df <- tibble(sens=sens, spec=spec, 
+             model=c(rep("external load", length(roc[[1]]$sensitivities)),
+                     rep("genetics", length(roc[[2]]$sensitivities)),
+                     rep("metabolome", length(roc[[3]]$sensitivities)), 
+                     rep("all", length(roc[[4]]$sensitivities)))) %>%
+    mutate(model = fct_relevel(model, "all", 
+                             "metabolome", "genetics", 
+                             "palyer \nload (PL)"))
+
+plot_roc <- ggplot(df,aes(1-spec,sens,color=model)) +
+  geom_line(size = 1.3, alpha = 1.7)+
+  labs(title= "Injury risk - ROC curve", 
+       x = "False Positive Rate (1-Specificity)", 
+       y = "True Positive Rate (Sensitivity)") +
+  scale_colour_manual(values=my_palette) +
+  annotate(geom="text", 
+           label = paste0("Workload (PL): ", c_index[[1]]), 
+           x=0.99, y=0.15, color=my_palette[4], adj=1,
+           size = 2.8) + 
+  annotate(geom="text", 
+           label = paste("PL + Genetics: ", c_index[[2]]), 
+           x=0.99, y=0.35, color=my_palette[3], adj=1, size = 2.8) +
+  annotate(geom="text", 
+           label = paste("PL + Metabolomics: ", c_index[[3]]), 
+           x=0.99, y=0.25, color=my_palette[2], adj=1, size = 2.8) +
+  annotate(geom="text", 
+           label = paste("Full model: ", c_index[[4]]), 
+           x=0.99, y=0.45, color=my_palette[1], adj=1, size = 2.8) +
+  annotate(geom="text", 
+           label = "C-index", 
+           x=0.75, y=0.55, size = 3) +
+  theme(legend.position = "none")
+
+plot_roc + theme_grey(base_size = 21)
+``` 
