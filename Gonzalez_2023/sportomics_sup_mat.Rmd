@@ -274,17 +274,20 @@ injuries %>% filter(injury=="Injured") %>% group_by(code) %>%
 Let us visualize the follow-up period
 
 ```{r plot_training_period}
-workload %>% group_by(code) %>% summarise(min=min(date), max=max(date)) %>%
+
+workload %>%  group_by(code) %>% 
+  summarise(min=min(date), max=max(date)) %>%
   pivot_longer(cols = min:max, names_to = "time") %>%
   ggplot(aes(x = value, y = code)) + 
   geom_line(size = 1.5, alpha = 0.3) +
   geom_point(size = 2) + 
-  labs(y = 'Internal code', x = "Date", 
+  labs(y = 'Player', x = "Date", 
        title = 'Follow-up (trainning set)',
        subtitle = 'From 15th September 2019 To 30th June 2021') +
   geom_point(data=injuries, aes(x=data, y=code), 
-             shape=23, fill="red", color="red", size = 2.5) +
-  scale_x_date(limits = c(dmy("1-09-2019"), dmy("31-07-2021")))
+             shape=23, size = 2.8) +
+  scale_x_date(limits = c(dmy("1-09-2019"), dmy("31-07-2021"))) +
+  scale_y_discrete(labels= 24:1) 
 ```
 
 
