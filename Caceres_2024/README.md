@@ -8,6 +8,10 @@ These resources comprise all the computer code and necessary data to replicate r
 
 The computer code is written in R/Bioconductor and it is organized following the results section of the manuscript. 
 
+The processed data folder is available at https://doi.org/10.6084/m9.figshare.25886674
+
+
+
 **Section 1: X-Ra as a measure of quantitative XCI**  
 
 - TCGA_XRA_CALLING
@@ -36,7 +40,9 @@ The computer code is written in R/Bioconductor and it is organized following the
 
 Within the code files, figures and tables of the manuscript are indicated.
 
-**Data comprise:**
+**Data content:**
+
+Download data at https://figshare.com/account/articles/25886674
 
 - Annotation data files
 - Files with selection of X chromosome methylation CpGs for different studies
