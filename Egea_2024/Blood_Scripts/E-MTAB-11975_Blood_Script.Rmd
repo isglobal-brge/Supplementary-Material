@@ -1,0 +1,172 @@
+---
+title: "E-MTAB-11975_Blood"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(limma)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library(IlluminaHumanMethylation450kmanifest)
+library(chrXRa)
+library(GEOquery)
+library(data.table)
+library(methylumi)
+```
+
+
+# PIPELINE FUNCTIONS. 
+```{r}
+
+# Reading idat files from a folder
+listIdatFiles <- function(folderPath) {
+  files <- list.files(folderPath, pattern = "\\.idat(\\.gz)?$", full.names = FALSE)
+  return(files)
+}
+
+
+addBasenameColumn <- function(targets, files, basePath) {
+  targets$Basename <- sapply(targets$barcodes, function(accession) {
+    # Find files that contain the accession name in their name
+    matching_files <- grep(accession, files, value = TRUE, ignore.case = TRUE)
+
+    # Assume the filenames contain the accession followed by _Grn or _Red
+    if(length(matching_files) > 0) {
+      basename_common <- sub("(_Grn|_Red)\\.idat(\\.gz)?$", "", matching_files[1])
+      return(file.path(basePath, basename_common))
+    }
+    
+    # Return NA if no files are found
+    return(NA)
+  }, USE.NAMES = FALSE)
+  
+  return(targets)
+}
+
+
+
+preprocess_rgset <- function(rgSet, targets) {
+  
+  detP <- detectionP(rgSet)
+  # remove poor quality samples
+  keep <- colMeans(detP) < 0.05
+  
+  # remove poor quality samples
+  rgSet <- rgSet[,keep]
+  
+  # remove poor quality samples from targets data
+  targets <- targets[keep,]
+  
+  # remove poor quality samples from detection p-value table
+  detP <- detP[,keep]
+  
+  # normalize the data; this results in a GenomicRatioSet object
+  mSetSq <- preprocessQuantile(rgSet) 
+  
+  #Filtering: 
+  detP <- detP[match(featureNames(mSetSq),rownames(detP)),] 
+
+  # remove any probes that have failed in one or more samples
+  keep <- rowSums(detP < 0.01) == ncol(mSetSq)
+  mSetSqFlt <- mSetSq[keep,]
+  mSetSqFlt <- dropLociWithSnps(mSetSqFlt)
+xReactiveProbes <- read.csv("C:/Users/aegea/Downloads/48639-non-specific-probes-Illumina450k.csv")
+  keep <- !(featureNames(mSetSqFlt) %in% xReactiveProbes$TargetID)
+  mSetSqFlt <- mSetSqFlt[keep,] 
+  mVals <- getM(mSetSqFlt)
+  bVals <- getBeta(mSetSqFlt)
+  return(list(mVals = mVals, bVals = bVals))
+}
+
+```
+
+
+```{r}
+library(readr)
+## "C:\Users\aegea\Downloads\lymphoblastoid_cell_lines\E-MTAB-11975.sdrf.txt"
+# Try to read the table with fill = TRUE to handle lines with fewer elements
+pheno <- read.table("C:/Users/aegea/Downloads/lymphoblastoid_cell_lines/E-MTAB-11975.sdrf.txt", 
+                    header = TRUE, 
+                    sep = "\t", 
+                    check.names = TRUE, 
+                    fill = TRUE,  # Adds NA for missing columns in rows with fewer fields
+                    quote = "")  # Handle cases where quotes may not be used consistently
+
+
+pheno = pheno %>% filter(Characteristics.sex. == "female")
+
+pheno <- pheno %>%
+  distinct(Source.Name, .keep_all = TRUE) %>%
+  mutate(barcode = gsub("_Grn.idat|_Red.idat", "", Array.Data.File))
+
+```
+
+
+```{r}
+
+#Obtaining B-values
+files <- listIdatFiles("C:/Users/aegea/Downloads/lymphoblastoid_cell_lines")
+targets <-addBasenameColumn(pheno, files, "C:/Users/aegea/Downloads/lymphoblastoid_cell_lines")
+rgset<- read.metharray.exp(base="C:/Users/aegea/Downloads/lymphoblastoid_cell_lines", targets=targets)
+bvals<- preprocess_rgset(rgset, targets)$bVals
+# ```{r}
+# saveRDS(bvals, "bvalues_lymphoblastoid_cell_lines.RDS")
+# ```
+
+```
+
+
+```{r}
+
+Optimth <- function(mm, cpgids){
+  ig <- IGlevels(mm, cpgids)
+  eg <- EGlevels(mm, cpgids)
+  
+  dif <- function(x, ig, eg){
+    igden <- density(ig, na.rm = TRUE)
+    egden <- density(eg, na.rm = TRUE)
+    which <- order(abs((igden$x -x)))[1]
+    -(egden$y[which] - igden$y[which])^2
+  }
+  
+  optimize(dif, ig, eg, interval = c(0.2,0.5), maximum = TRUE)$maximum
+}
+
+
+tha <- Optimth(metfemale, colnames(metfemale))
+
+
+# Calculating X-Ra with optimized threshold
+
+pheno_cell_lines = pheno %>% filter(Characteristics.cell.line. == "lymphoblastoid cell line" )
+gsms <- pheno %>% filter(Characteristics.cell.line. == "lymphoblastoid cell line" ) %>% pull(barcode)
+met_subset <- bvals[, gsms]
+
+load("C:/Users/aegea/Downloads/cpgid.RData")
+annot = cpgid 
+cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+common_CpGs <- intersect(rownames(met_subset), cpgx)
+bvals_chrX <- met_subset[common_CpGs, ]
+metfemale <- t(bvals_chrX)
+
+pheno_cell_lines$xra <- XRa(metfemale, colnames(metfemale), threshold=tha)
+pheno_cell_lines$xra_t_100 <- (pheno_cell_lines$xra)*100
+
+pheno_cell_lines$xra_100 = (XRa(metfemale, colnames(metfemale)))*100
+
+```
+
+```{r}
+# Process pheno dataframe to fit model
+pheno_cell_lines = pheno_cell_lines %>% filter(!grepl("genetic frontotemporal dementia", Factor.Value.disease.)) %>% mutate(disease_status=ifelse(Factor.Value.disease. == "normal", 0, 1)) %>% mutate(age=as.numeric(Characteristics.age.))
+# saveRDS(pheno_cell_lines, "C:/Users/aegea/Documents/pheno_dfs_blood/pheno_array_exp.rds")
+pheno_cell_lines = pheno_cell_lines %>% mutate(disease_status=ifelse(Factor.Value.disease. == "normal", 0, 1))
+summary(glm(disease_status~ Characteristics.age. + xra_100, family="binomial", data = pheno_cell_lines))
+mod = glm(disease_status~ Characteristics.age. + xra_100, family="binomial", data = pheno_cell_lines)
+# saveRDS(mod, "C:/Users/aegea/Documents/glms_blood/E-MTAB-11975.rds")
+```
+

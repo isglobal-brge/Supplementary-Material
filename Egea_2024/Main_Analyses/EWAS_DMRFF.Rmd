@@ -1,0 +1,312 @@
+---
+title: "EWAS_Dmrff"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+library(chrXRa)
+library(GEOquery)
+library(limma)
+library(sva)
+library(lmerTest)
+library(data.table)
+library(fs) 
+library(dmrff)
+library(ggmanh)
+library(dplyr)
+library(xtable)
+library(flextable)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+```
+
+```{r}
+
+# Define the directory paths
+pheno_dir <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/pheno_dfs/"
+bvals_dir <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/Betas/"
+
+# Define the accessions of entorhinal cortex datasets
+accessions <- c("GSE105109", "GSE125895", "GSE212682", "GSE59685")
+dmcs_dir <- "C:/Users/aegea/Documents/DMCs_Entorhinal/"
+meta_results_dir <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/meta_analysis_results/"
+output_pheno_dir <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/pheno_dfs_sva"
+
+```
+
+
+
+```{r}
+# Function to perform the analysis for a given accession following the DRMFF pipeline
+
+perform_analysis <- function(acc) {
+  # Paths for pheno and methylation data
+  pheno_path <- file.path(pheno_dir, paste0("pheno_", acc, ".rds"))
+  methylation_path <- file.path(bvals_dir, paste0("bvals_", acc, ".rds"))
+  
+  # Load data
+  pheno <- readRDS(pheno_path)
+  methylation <- readRDS(methylation_path)
+  
+  # Filter pheno data and corresponding methylation data
+  pheno <- pheno %>% filter(brain_region == "entorhinal cortex")
+  methylation <- methylation[, pheno$geo_accession]
+  
+  # Remove non-CpG probes
+  methylation <- methylation[grepl("^c", rownames(methylation)),]
+  
+  # Identify age column based on accession
+  if (acc == "GSE212682") {
+    mod <- model.matrix(~ xra_100 * disease_status, pheno)
+  } else {
+    mod <- model.matrix(~ xra_100 * disease_status + age, pheno)
+  }
+  
+  # Construct EWAS model
+  mod0 <- mod[, 1]
+  
+  # Replace missing methylation values with mean values
+  methylation.mean <- rowMeans(methylation, na.rm = TRUE)
+  idx <- which(is.na(methylation), arr.ind = TRUE)
+  if (nrow(idx) > 0) {
+    methylation[idx] <- methylation.mean[idx[, "row"]]
+  }
+  
+  # Apply SVA
+  sva.fit <- sva(methylation, mod = mod, mod0 = mod0)
+  
+  # Save surrogate variables
+  sv_file <- file.path(sv_dir, paste0("sva_", acc, ".rds"))
+  saveRDS(sva.fit$sv, sv_file)
+  
+  # Construct design matrix with SVA
+  design <- cbind(mod, sva.fit$sv)
+  
+  # Save pheno with svas
+  pheno_output_path <- file.path(output_pheno_dir, paste0("pheno_", acc, "_sva.rds"))
+  saveRDS(pheno, pheno_output_path)
+  
+  # Fit model with limma
+  fit <- lmFit(methylation, design)
+  fit <- eBayes(fit)
+  
+  # Extract statistics
+  stats <- data.frame(
+    estimate = fit$coefficients[, "xra_100:disease_status"],
+    se = sqrt(fit$s2.post) * fit$stdev.unscaled[, "xra_100:disease_status"],
+    p.value = fit$p.value[, "xra_100:disease_status"]
+  )
+  
+  # Load annotations based on accession
+  if (acc == "GSE212682") {
+    requireNamespace("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
+    data("Locations")
+    data("Other")
+    annotation <- cbind(as.data.frame(Locations), as.data.frame(Other))
+  } else {
+    requireNamespace("IlluminaHumanMethylation450kanno.ilmn12.hg19")
+   
+    data("Locations")
+    data("Other")
+    annotation <- cbind(as.data.frame(Locations), as.data.frame(Other))
+  }
+  
+  # Match annotations
+  common <- intersect(rownames(methylation), rownames(annotation))
+  annotation <- annotation[match(common, rownames(annotation)), ]
+  stats <- stats[match(common, rownames(stats)), ]
+  methylation <- methylation[match(common, rownames(methylation)), ]
+  
+  # Combine statistics with annotation
+  stats <- cbind(stats, annotation)
+  
+  return(list(stats = stats, methylation = methylation))
+}
+
+# Perform analysis for each accession and name the results list
+all_stats <- setNames(lapply(accessions, perform_analysis), accessions)
+```
+
+```{r}
+# Set the number of cores for parallel processing
+options(mc.cores = 20)
+
+# Calculate DMR pre-objects for each dataset
+pre <- sapply(accessions, function(acc) {
+  cat(date(), "pre", acc, "\n")
+  res <- all_stats[[acc]]
+  stats <- res$stats
+  methylation <- res$methylation
+  with(stats, dmrff.pre(estimate, se, methylation, chr, pos))
+}, simplify = FALSE)
+
+# pre = readRDS("pre_object_dmrff.rds")
+# saveRDS(pre, "pre_object_annot.rds")
+
+# Perform meta-analysis
+meta <- dmrff.meta(pre)
+# saveRDS(meta, "meta_analysis_entorhinal_dmrf_annot.rds")
+
+```
+
+
+```{r}
+#Load annotations
+load("C:/Users/aegea/Downloads/cpgid.RData")
+
+# Add annotation to meta-analysis results
+meta_positions <- gsub("^chr", "", paste(meta$ewas$chr, meta$ewas$pos))
+anno_positions <- paste(cpgid$Chromosome, cpgid$Genomic_Coordinate)
+idx <- match(meta_positions, anno_positions)
+meta$ewas$cpg <- rownames(cpgid)[idx]
+meta$ewas$gene <- cpgid$Gene_Symbol[idx]
+
+# Adjust p-values by Bonferroni method
+meta$ewas$adj_p.value <- p.adjust(meta$ewas$p.value, method = "BH")
+meta_signif_bonferroni = meta$ewas[which(meta$ewas$adj_p.value < 0.05 ), ]
+cpg_signif = rownames(meta_signif_bonferroni)
+```
+
+
+```{r}
+
+#Preparing data for Manhattan plot of EWAS
+manhattan_data = meta$ewas
+
+manhattan_data = manhattan_data %>% 
+  mutate(
+    chr = as.character(gsub("chr", "", chr)))
+
+manhattan_data$chr <- factor(manhattan_data$chr, c(1:22,"X"))
+
+# Select the top 50 most significant CpGs to label them in Manhattan plot
+top_50 <- manhattan_data %>%
+  dplyr::filter(adj_p.value < 0.05) %>%
+  dplyr::arrange(adj_p.value) %>%
+  dplyr::slice(1:50)
+
+# Add labels for the top 50 most significant CpGs
+manhattan_data <- manhattan_data %>%
+  mutate(label = if_else(cpg %in% top_50$cpg, gene, ""))
+
+# Preprocess the data for ggmanh
+tmp <- manhattan_data_preprocess(
+  manhattan_data, pval.colname = "p.value", chr.colname = "chr", pos.colname = "pos",
+  
+)
+
+# Generate Manhattan plot with
+# highlighting most significant CpGs and save result
+g <- manhattan_plot(tmp, plot.title = "Manhattan Plot for Entorhinal Cortex Differential Methylation Analysis", color.by.highlight = TRUE, label.colname="label")
+
+# Display the plot
+print(g)
+
+# Save the plot
+ggsave("manhattan_plot.png", plot = g, width = 10, height = 6, dpi = 300)
+```
+
+
+Create a table for top 20 differentially methylated cpgs: 
+
+```{r}
+
+manhattan_data <- as.data.frame(manhattan_data)
+
+# Filter and arrange the data to get the top 20 most significant CpGs that are in the filtered_results
+top20 <- manhattan_data %>%
+  dplyr::arrange(adj_p.value) %>%
+  dplyr::slice(1:20)
+
+# Select the relevant columns
+top20_table <- top20 %>%
+  dplyr::select(cpg, gene, estimate, adj_p.value, chr)
+
+# Convert the dataframe to a LaTeX table
+latex_table <- xtable(top20_table)
+
+# Print the LaTeX table
+print(latex_table, type = "latex", include.rownames = FALSE)
+
+```
+
+
+Get a whole list as html: 
+```{r}
+
+# Filter and arrange the data to get the top 20 most significant CpGs that are in the filtered_results
+arranged_cpgs <- manhattan_data %>%
+  dplyr::arrange(adj_p.value) %>%
+  dplyr::select(cpg, gene, estimate, adj_p.value, chr)
+
+# Create a flextable object
+flex_table <- flextable(arranged_cpgs) %>%
+  set_table_properties(width = 1, layout = "autofit") %>%
+  theme_box() %>%
+  autofit()
+
+# Save the flextable as an HTML file
+save_as_html(flex_table, path = "cpgs_table.html")
+
+```
+
+
+```{r}
+## KEGG and GO enrichment plots from CpGs
+
+cpgs_filtered <- data.frame(CpG = names(filtered_results))
+meta$ewas <- tibble::rownames_to_column(meta$ewas, var = "CpG")
+
+# Convert gene symbols to Entrez IDs
+gene_ids <- bitr(gene_list, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+
+kegg_enrich=enrichKEGG(gene_ids$ENTREZID, organism = "hsa", keyType = "kegg", pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.2, use_internal_data = FALSE)
+
+dotplot <- enrichplot::dotplot(kegg_enrich, showCategory = 20) +
+  ggtitle("Top 20 KEGG Pathway Enrichment Results") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+        axis.text.y = element_text(size = 10)) +
+  scale_fill_viridis_c()
+
+# Save the plot to a PNG file
+ggsave("KEGG_Enrichment_Dotplot.png", dotplot, width = 10, height = 6)
+
+# Perform GO enrichment analysis considering p-values
+go_enrich <- enrichGO(gene = gene_ids$ENTREZID , 
+                      OrgDb = org.Hs.eg.db, 
+                      keyType = "ENTREZID", 
+                      ont = "BP", 
+                      pvalueCutoff = 0.05, 
+                      pAdjustMethod = "BH", 
+                      qvalueCutoff = 0.05)
+
+# Visualize the results
+dotplot <- enrichplot::dotplot(go_enrich, showCategory = 20) +
+  ggtitle("Top 20 GO Pathway Enrichment Results") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+        axis.text.y = element_text(size = 10)) +
+  scale_fill_viridis_c()
+
+# Save the plot to a PNG file
+ggsave("GO_Enrichment_Dotplot.png", dotplot, width = 10, height = 6)
+```
+
+
+
+
+
+
+

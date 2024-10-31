@@ -1,0 +1,156 @@
+---
+title: "Alzheimer_GSE66351_Brain"
+output: html_document
+date: "2024-04-17"
+---
+
+```{r setup, include=FALSE}
+# Load the necessary libraries
+library(knitr)
+library(tidyverse)
+library(limma)
+library(minfi)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library(IlluminaHumanMethylation450kmanifest)
+library(stringr)
+library(chrXRa)
+library(GEOquery)
+library(data.table)
+```
+
+```{r}
+# Fetch expression data from GEO
+gsm.expr <- getGEO("GSE66351")[[1]]
+
+```
+
+
+
+```{r}
+# Extract methylation levels, annotations, and phenotype data for females
+met <- exprs(gsm.expr)
+annot <- fData(gsm.expr)
+pheno <- pData(gsm.expr) 
+pheno <- pheno %>% filter(`Sex:ch1` == "F")
+
+
+```
+
+
+
+
+```{r}
+
+# Define the function for X-Ra calculation
+calculate_xra <- function(df, met, title, output_prefix){
+  
+  gsms <- df %>% pull(geo_accession)
+  cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+  met_subset <- met[, gsms]
+  
+  common_CpGs <- intersect(rownames(met_subset), cpgx)
+  bvals_chrX <- met_subset[common_CpGs, ]
+  metfemale <- t(bvals_chrX)
+  df$XRa <- XRa(metfemale, colnames(metfemale))
+ 
+  return(df)
+}
+
+
+```
+
+```{r}
+
+# pheno = readRDS("C:/Users/aegea/Documents/TFM/ALZHEIMER/pheno_dfs/pheno_GSE66351.rds")
+# saveRDS(pheno,"C:/Users/aegea/Documents/TFM/ALZHEIMER/pheno_dfs/pheno_all_GSE66351.rds" )
+# met = readRDS(met[, pheno$geo_accession], "C:/Users/aegea/Documents/TFM/ALZHEIMER/Betas/bvalues_GSE66351.rds")
+# pheno_df = readRDS("C:/Users/aegea/Documents/TFM/ALZHEIMER/pheno_dfs/pheno_GSE66351.rds")
+
+#Use only sorted cell data, as bulk data does not contain CpGs in X chromosome
+pheno <- pheno %>% filter(`cell type:ch1` != "bulk")
+pheno <- calculate_xra(pheno, met) 
+pheno_ad = pheno_df %>% filter(disease_status == 1)
+
+```
+
+
+
+```{r}
+# Save the models for the correlation between X-Ra and disease status for each cell type 
+pheno_xra <- calculate_xra(pheno, met) %>%
+  mutate(
+    age = as.numeric(`age:ch1`), 
+    cell_type = `cell type:ch1`, 
+    disease_status = ifelse(`diagnosis:ch1` == "AD", 1, 0),
+    xra_100 = XRa * 100
+ 
+  )
+
+# Function to create and save GLM models for different tissue types
+create_glm_models <- function(pheno, met, dir_path, accession_name) {
+  # Ensure the directory exists or create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+    cat("Directory created at:", dir_path, "\n")
+  } else {
+    cat("Directory already exists at:", dir_path, "\n")
+  }
+
+  # Loop through each unique tissue type
+  unique(pheno$cell_type) %>%
+    set_names() %>%
+    map(~{
+      # Filter the data for the specific tissue
+      data_subset <- filter(pheno, cell_type == .x)
+      # Fit the glm model
+      model_xra <- glm(disease_status ~ xra_100, family = binomial, data = data_subset)
+      # Construct the file path using accession name and tissue type
+      model_path <- file.path(dir_path, paste0(accession_name, "_", .x, "_xra_glm.rds"))
+      # Save the model
+      saveRDS(model_xra, file = model_path)
+      cat("Model saved for", .x, "at", model_path, "\n")
+    })
+}
+
+# Variables for model saving
+main_dir <- "C:/Users/aegea/Documents/TFM/Alzheimer/XRa_models"
+accession_name <- "GSE66351"  # Set to the relevant accession number
+
+# Create models for each tissue type and save them
+create_glm_models(pheno_xra, met, main_dir, accession_name)
+
+```
+
+
+```{r}
+
+# Analyze the relationship between Braak Stage and X-Ra at a cell level 
+library(ggplot2)
+
+# Define the color palette
+color_palette <- c("hotpink", "cornflowerblue")
+
+# Create the scatter plot with regression lines
+scatter_plot <- ggplot(pheno_ad, aes(x = xra_100, y = braak_numeric, color = `cell type:ch1`)) +
+  geom_point(alpha = 0.8, size = 1) +  # Adjusted point color and size
+  geom_smooth(method = 'lm', se = TRUE, aes(fill = `cell type:ch1`), alpha = 0.3, linetype = "solid", size = 1, fullrange = TRUE) +  # Changed smooth line color and type
+  labs(x = "XRa Levels (%)", y = "Braak Stage",
+       title = "Relationship Between XRa Levels\nand Braak Stage by Cell Type") +  # Title in two lines
+  theme_minimal(base_size = 10) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    plot.title = element_text(size = 12)
+  ) +
+  scale_color_manual(values = color_palette) +  # Use hotpink and cornflowerblue colors for distinct colors
+  scale_fill_manual(values = color_palette)  # Matching fill colors for smooth
+
+# Save the plot
+ggsave(filename = "lm_plot.png", plot = scatter_plot)
+
+# Display the plot
+print(scatter_plot)
+
+```
+

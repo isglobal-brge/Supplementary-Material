@@ -1,0 +1,105 @@
+---
+title: "GSE144858_Blood_Script"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+library(chrXRa)
+library(GEOquery)
+library(lmerTest)
+library(data.table)
+
+```
+
+
+```{r cars}
+
+#Load phenodataframe, and subset female patients and female
+# methylation data
+gsm <- getGEO("GSE144858", AnnotGPL =TRUE)[[1]]
+phenobb <- pData(phenoData(gsm))
+met <- exprs(gsm)
+
+load("C:/Users/aegea/Downloads/cpgid.RData")
+
+cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+smmet <- intersect(rownames(met), cpgx)
+
+metX <- met[smmet,]
+
+sel <- which(phenobb$`Sex:ch1`=="Female")
+
+metfemale <- as.matrix(metX[,sel])
+phenofemale <- phenobb[sel, ]
+
+cpgids <- rownames(metfemale)
+metfemale <- t(metfemale)
+
+
+```
+
+
+```{r cars}
+
+# Estimate immune cell counts from methylation data with meffil 
+met = as.matrix(met)
+head(met)
+cell <- meffilEstimateCellCountsFromBetas(met, "blood gse35069 complete")
+cell <- cell[sel,]
+
+#Compute X-Ra for blood using optimized threshold
+Optimth <- function(mm, cpgids){
+  ig <- IGlevels(mm, cpgids)
+  eg <- EGlevels(mm, cpgids)
+  
+  dif <- function(x, ig, eg){
+    igden <- density(ig, na.rm = TRUE)
+    egden <- density(eg, na.rm = TRUE)
+    which <- order(abs((igden$x -x)))[1]
+    -(egden$y[which] - igden$y[which])^2
+  }
+  
+  optimize(dif, ig, eg, interval = c(0.2,0.5), maximum = TRUE)$maximum
+}
+
+
+tha <- Optimth(metfemale, cpgids)
+
+#compute XRa
+phenofemale$xra <- XRa(metfemale, cpgids, threshold=tha)
+
+
+phenofemale$age <- as.numeric(phenofemale$`age:ch1`)
+phenofemale$dis <- relevel(factor(phenofemale$`disease state:ch1`), ref = "control")
+phenofemale$dis2 <- relevel(factor(phenofemale$`disease state2:ch1`), ref="control")
+
+phenofemale <- cbind(phenofemale, cell)
+
+phenofemale$dis2[phenofemale$dis2=="unknown"] <- NA
+
+incl <- which(phenofemale$"age<65.exclusion:ch1"=="Included")
+
+phenofemale$disany <- phenofemale$dis!="control"
+phenofemale$disany2 <- phenofemale$dis2!="control"
+
+phenofemale$xra_100 = (phenofemale$xra*100)
+summary(glm(disany2 ~xra_100+age+
+                           Bcell+CD4T+CD8T+Eos+
+                           Mono+Neu+NK, data=phenofemale[incl,], family="binomial"))
+
+model = glm(disany2 ~xra_100+age+
+                           Bcell+CD4T+CD8T+Eos+
+                           Mono+Neu+NK, data=phenofemale[incl,], family="binomial")
+
+
+# saveRDS(model, "glms_blood/glm_GSE144858.rds")
+
+
+```
+
+
+

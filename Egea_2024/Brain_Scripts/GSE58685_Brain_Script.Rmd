@@ -1,0 +1,143 @@
+---
+title: "Alzheimer_Brain_GSE59685"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+#Load the necessary libraries
+library(knitr)
+library(tidyverse)
+library(limma)
+library(minfi)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library(IlluminaHumanMethylation450kmanifest)
+library(RColorBrewer)
+library(missMethyl)
+library(minfiData)
+library(Gviz)
+library(DMRcate)
+library(stringr)
+library(chrXRa)
+library(GEOquery)
+library(data.table)
+```
+
+```{r}
+# Fetch the dataset from GEO and load it into the workspace
+gsm.expr <- getGEO("GSE59685", destdir = ".")[[1]]
+
+#gsm.expr <-getGEO("GSE59685",destdir =".", AnnotGPL =TRUE)[[1]]
+
+```
+
+```{r}
+# Process phenotype data: filter for females and only use brain samples
+pheno <- pData(gsm.expr)
+pheno <- pheno %>% 
+  filter(`Sex:ch1` == "FEMALE") %>%
+  filter(`source tissue:ch1` != "whole blood")
+
+```
+
+```{r}
+#download https://ftp.ncbi.nlm.nih.gov/geo/series/GSE59nnn/GSE59685/suppl/GSE59685%5Fbetas.csv.gz
+#into local directory
+
+met <- fread("./GSE59685_betas.csv.gz", sep=",")
+
+met_filt <- met
+colnames(met_filt) <- as.character(met_filt[2,])
+met_filt <- met_filt[-c(1,2,3), ]
+
+
+women_gsms =  pheno %>% filter(`Sex:ch1` == "FEMALE") %>% pull(geo_accession)
+met_women <- met_filt %>%
+  dplyr::select(any_of(women_gsms))
+met_women <- mutate_all(met_women, function(x) as.numeric(as.character(x)))
+```
+
+
+```{r}
+met_women <- as.matrix(met_women)
+rownames(met_women) <- unlist(as.list(met_filt[, 1]))
+##saveRDS(met_women, "bvals_GSE59685.rds")
+##met_women = readRDS("./bvals_GSE59685.rds")
+```
+
+
+
+```{r}
+
+# Define the function for X-Ra calculation
+calculate_xra <- function(df, met, title, output_prefix){
+  
+  gsms <- df %>% pull(geo_accession)
+  cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+  met_subset <- met[, gsms]
+  
+  common_CpGs <- intersect(rownames(met_subset), cpgx)
+  bvals_chrX <- met_subset[common_CpGs, ]
+  metfemale <- t(bvals_chrX)
+  df$XRa <- XRa(metfemale, colnames(metfemale))
+ 
+  return(df)
+}
+
+
+```
+
+```{r}
+#annotated cpgs
+load("../cpgid.RData")
+
+##brain_df_exclude
+
+pheno_xra <- calculate_xra(pheno, met_women[, brain_df_exclude$geo_accession]) %>% filter(`ad.disease.status:ch1` != "Exclude") %>%
+  mutate(
+    age = as.numeric(`age at death:ch1`), 
+    brain_region = `source tissue:ch1`, 
+    xra_100 = XRa * 100, 
+    disease_status = ifelse(`ad.disease.status:ch1` == "AD", 1, 0), 
+    age = as.numeric(`age.brain:ch1`)
+ 
+  )
+
+
+# Function to create and save GLM models for different tissue types
+create_glm_models <- function(pheno, dir_path, accession_name) {
+  # Ensure the directory exists or create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+    cat("Directory created at:", dir_path, "\n")
+  } else {
+    cat("Directory already exists at:", dir_path, "\n")
+  }
+
+  # Loop through each unique tissue type
+  unique(pheno$brain_region) %>%
+    set_names() %>%
+    map(~{
+      # Filter the data for the specific tissue
+      data_subset <- filter(pheno, brain_region == .x)
+      # Fit the glm model
+      model_xra <- glm(disease_status ~ xra_100 + age , family = binomial, data = data_subset)
+      # Construct the file path using accession name and tissue type
+      model_path <- file.path(dir_path, paste0(accession_name, "_", .x, "_xra_glm.rds"))
+      # Save the model
+      saveRDS(model_xra, file = model_path)
+      cat("Model saved for", .x, "at", model_path, "\n")
+    })
+}
+
+# Variables for model saving
+main_dir <- "."
+accession_name <- "GSE59685"  # Set to the relevant accession number
+
+# Create models for each tissue type and save them
+create_glm_models(pheno_xra, main_dir, accession_name)
+
+```

@@ -1,0 +1,221 @@
+---
+title: "Braak_Meta_Analysis"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+Code for the creation of the Meta Analysis of Braak Stage's effect on X-Ra levels in Alzheimer's disease patients. Braak Stages are mapped to NFT scores and linear models are fitted for each of the GEO datasets. After this, the results are meta-analyzed. 
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(meta)
+library(RColorBrewer)
+library(stringr)
+
+# Define directories
+pheno_dir <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/Repo_Alzheimer_Master_Thesis/Supplementary_Files/pheno_dfs"
+model_dir <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/Repo_Alzheimer_Master_Thesis/Supplementary_Files/models_nft_score"
+
+# List files in specific directories to check their contents
+list.files(pheno_dir)
+list.files(model_dir)
+```
+
+```{r}
+# Define the paths with identifiers
+pheno_paths <- c(
+  "pheno_GSE80970.rds",
+  "pheno_GSE59685.rds",
+  "pheno_GSE105109.rds",
+  "pheno_GSE212682.rds"
+)
+full_paths <- file.path(pheno_dir, pheno_paths)
+
+# Load data frames with an additional 'source' column
+phenos <- setNames(lapply(full_paths, function(path) {
+  df <- readRDS(path)
+  df$source <- basename(path)
+  df
+}), pheno_paths)
+
+# Process the data frames
+processed_phenos <- lapply(phenos, function(df) {
+  if ("pheno_GSE212682.rds" %in% df$source) {
+    df  # Return without processing if it's GSE212682
+  } else {
+    df %>%
+      mutate(nft_score = case_when(
+        braak_numeric == 0 ~ 0,
+        braak_numeric %in% 1:2 ~ 1,
+        braak_numeric %in% 3:4 ~ 2,
+        braak_numeric >= 5 ~ 3
+      )) %>%
+      filter(nft_score != 0)
+  }
+})
+
+
+```
+
+
+```{r}
+# Function to create models for each region within a dataset
+create_region_models <- function(df, dataset_name) {
+  if (!is.data.frame(df)) {
+    stop("The input must be a data frame.")
+  }
+  if ("brain_region" %in% names(df)) {
+    regions <- unique(df$brain_region)
+    models <- list()
+    for (region in regions) {
+      data <- df %>% filter(brain_region == region)
+      # Conditionally set the model formula based on the dataset
+      formula <- if (dataset_name == "pheno_GSE212682.rds") {
+        xra_100 ~ nft_score  # No age adjustment for GSE212682
+      } else {
+        xra_100 ~ nft_score + age  # Include age adjustment for others
+      }
+      models[[region]] <- lm(formula, data = data)
+    }
+    return(models)
+  } else {
+    stop("Data frame does not contain 'brain_region' column.")
+  }
+}
+
+# Apply the function to each processed phenotype dataset in the list
+all_models <- Map(create_region_models, processed_phenos, names(processed_phenos))
+```
+
+```{r}
+# Custom function to handle special capitalization needs
+format_name <- function(name) {
+  # Remove undesired parts
+  clean_name <- gsub("pheno_|\\.rds", "", name)
+  
+  # Replace known dataset codes to prevent splitting (e.g., GSE to Gse)
+  clean_name <- gsub("GSE", "GSE", clean_name, ignore.case = TRUE)
+  
+  # Split on underscores or transitions from lower to upper case and insert spaces
+  formatted_name <- gsub("([a-z])([A-Z])", "\\1 \\2", clean_name)
+
+  # Apply title case to each word except known acronyms
+  words <- strsplit(formatted_name, " ")[[1]]
+  formatted_name <- sapply(words, function(word) {
+    if (tolower(word) %in% c("gse")) {
+      toupper(word)  # Keep acronyms uppercase
+    } else {
+      tools::toTitleCase(word)  # Apply title case otherwise
+    }
+  })
+  paste(formatted_name, collapse=" ")
+}
+
+# Example usage for creating the named model list
+model_list <- list()
+for (dataset_name in names(all_models)) {
+    dataset_clean_name <- format_name(dataset_name)
+    regions_models <- all_models[[dataset_name]]
+    
+    for (region_name in names(regions_models)) {
+        region_clean_name <- format_name(region_name)
+        key_name <- sprintf("%s (%s)", region_clean_name, dataset_clean_name)
+        model_list[[key_name]] <- regions_models[[region_name]]
+    }
+}
+
+# Now print the keys to see the correctly formatted names
+print(names(model_list))
+
+```
+
+```{r}
+
+# Extract estimates and standard errors from each model
+formeta_filtered <- lapply(model_list, function(m) {
+  coef_summary <- summary(m)$coefficients
+  if ("nft_score" %in% rownames(coef_summary)) {
+    return(data.frame(
+      est = coef_summary["nft_score", "Estimate"], 
+      se = coef_summary["nft_score", "Std. Error"]
+    ))
+  } else {
+    return(data.frame(est = NA, se = NA))  # Handle cases where 'nft_score' might not be in the model
+  }
+})
+
+# Convert the list of data frames to a single data frame with row binding
+formeta_filtered <- bind_rows(formeta_filtered, .id = "Study")
+
+# Now, 'Study' column contains the indices, you might want to replace them or adjust as needed
+# If the indices are not informative, replace with names from the model_list
+names(formeta_filtered$Study) <- names(model_list)
+
+# Check the results
+print(formeta_filtered)
+
+```
+
+
+```{r}
+# Reapply transformation and update `BrainRegion`
+formeta_filtered$BrainRegion <- gsub("Cerebellar Cortex", "Cerebellum", formeta_filtered$BrainRegion, ignore.case = TRUE)
+
+# Since transformation has been applied correctly, verify by printing unique brain regions
+print(unique(formeta_filtered$BrainRegion))
+
+# Re-assign colors with the updated brain regions
+color_map <- c(
+  "Cerebellum" = "#E41A1C",
+  "Entorhinal Cortex" = "#377EB8",
+  "Superior Temporal Gyrus" = "#4DAF4A",
+  "Middle Temporal Gyrus" = "#984EA3",
+  "Dentate Gyrus" = "#FF7F00",
+  "Cingulate Gyrus" = "#FFFF33",
+  "Frontal Cortex" = "#A65628",
+  "Prefrontal Cortex" = "#F781BF",
+  "Locus Coeruleus" = "#999999",
+  "Middle Frontal Gyrus" = "mediumseagreen",
+  "Substantia Nigra" = "#A65628",
+  "CA1" = "slateblue"
+)
+
+formeta_filtered$Color <- sapply(formeta_filtered$BrainRegion, function(br) {
+  ifelse(is.na(color_map[br]), "gray", color_map[br])
+})
+
+# Check updated color assignments
+print(formeta_filtered$Color)
+```
+
+
+```{r}
+
+
+# Assign colors to brain regions using custom color map
+formeta_filtered$Color <- sapply(formeta_filtered$BrainRegion, function(br) {
+  color_map[br] <- ifelse(is.na(color_map[br]), "gray", color_map[br])
+})
+
+
+# Conduct the meta-analysis
+matdat <- meta::metagen(TE = formeta_filtered$est, seTE = formeta_filtered$se,
+                        studlab = formeta_filtered$Study, comb.fixed = TRUE, comb.random = TRUE, 
+                        level.ci = 0.95)
+
+# Create and customize a forest plot
+png("braak_brain_regions.png", width = 2000, height = 1200, res = 150)
+meta::forest(matdat, layout="RevMan5",  
+             leftlabs = c("Study", "95% CI"), xlab = "Change in X-Ra (%) levels", 
+             title = "Meta-analysis of NFT Scores by Brain Region", col.diamond = "blue", col.diamond.lines = "steelblue", 
+             col.predict = "red", col.square = formeta_filtered$Color, col.square.lines = formeta_filtered$Color,
+             cex = 0.8)
+dev.off()
+
+# Print the meta-analysis results
+print(matdat)
+
+```

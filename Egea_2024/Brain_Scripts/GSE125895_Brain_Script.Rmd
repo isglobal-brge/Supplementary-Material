@@ -1,0 +1,212 @@
+--
+title: "Alzheimer_Brain_GSE125895"
+author: "Aitana Egea"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(knitr)
+library(tidyverse)
+library(limma)
+library(minfi)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library(IlluminaHumanMethylation450kmanifest)
+library(RColorBrewer)
+library(missMethyl)
+library(minfiData)
+library(Gviz)
+library(DMRcate)
+library(stringr)
+library(chrXRa)
+library(GEOquery)
+library(data.table)
+
+```
+
+```{r}
+
+gsm.expr <- getGEO(filename="C:/Users/aegea/Downloads/GSE125895_series_matrix.txt.gz", destdir = ".")
+pheno <- pData(gsm.expr) %>% filter(`Sex:ch1` == "F")
+
+```
+
+
+
+1. Define pipeline functions for file handling and data preprocessing.
+
+```{r}
+
+
+# Función para leer los nombres de los archivos .idat de una carpeta
+listIdatFiles <- function(folderPath) {
+  # Obtener todos los nombres de archivos .idat y .idat.gz en la carpeta
+  files <- list.files(folderPath, pattern = "\\.idat(\\.gz)?$", full.names = FALSE)
+  return(files)
+}
+
+
+addBasenameColumn <- function(targets, files, basePath) {
+  # Modificar la columna Basename para que contenga la parte base del nombre de archivo
+  targets$Basename <- sapply(targets$geo_accession, function(accession) {
+    # Encontrar archivos que coincidan con la accession en su nombre
+    matching_files <- grep(accession, files, value = TRUE)
+    
+    # Asumir que los nombres de los archivos contienen la accession seguida de _Grn o _Red
+    # Extraer la parte base común del nombre de archivo, excluyendo el sufijo y la extensión
+    # Esta operación asume que todos los archivos para una muestra tienen el mismo prefijo
+    if(length(matching_files) > 0) {
+      basename_common <- sub("(_Grn|_Red)\\.idat(\\.gz)?$", "", matching_files[1])
+      return(paste0(basePath, "/", basename_common))
+    }
+    
+    return(NA)
+  })
+  
+  return(targets)
+}
+
+
+preprocess_rgset <- function(rgSet, targets) {
+  
+  detP <- detectionP(rgSet)
+  # remove poor quality samples
+  keep <- colMeans(detP) < 0.05
+  
+  # remove poor quality samples
+  rgSet <- rgSet[,keep]
+  
+  # remove poor quality samples from targets data
+  targets <- targets[keep,]
+  
+  # remove poor quality samples from detection p-value table
+  detP <- detP[,keep]
+  
+  # normalize the data; this results in a GenomicRatioSet object
+  mSetSq <- preprocessQuantile(rgSet) 
+  
+  #Filtering: 
+  detP <- detP[match(featureNames(mSetSq),rownames(detP)),] 
+
+  # remove any probes that have failed in one or more samples
+  keep <- rowSums(detP < 0.01) == ncol(mSetSq)
+  mSetSqFlt <- mSetSq[keep,]
+  mSetSqFlt <- dropLociWithSnps(mSetSqFlt)
+ 
+  
+ # C:\Users\aegea\Downloads\48639-non-specific-probes-Illumina450k.csv
+xReactiveProbes <- read.csv("C:/Users/aegea/Downloads/48639-non-specific-probes-Illumina450k.csv")
+  keep <- !(featureNames(mSetSqFlt) %in% xReactiveProbes$TargetID)
+  mSetSqFlt <- mSetSqFlt[keep,] 
+  mVals <- getM(mSetSqFlt)
+  bVals <- getBeta(mSetSqFlt)
+  return(list(mVals = mVals, bVals = bVals))
+}
+
+```
+
+
+2. Extract and preprocess IDAT files.
+
+```{r}
+tarFilePath <- "C:/Users/aegea/Downloads/GSE125895_RAW.tar"
+targetDirectory <- "C:/Users/aegea/Documents/TFM/GSE125895/idat"
+if (!dir.exists(targetDirectory)) dir.create(targetDirectory, recursive = TRUE)
+untar(tarFilePath, exdir = targetDirectory)
+
+files <- listIdatFiles(targetDirectory)
+targets <- addBasenameColumn(pheno, files, targetDirectory)
+
+```
+
+
+
+```{r}
+targets<- targets[-1,]
+pheno <- pheno[-1, ]
+rgset<- read.metharray.exp(base="C:/Users/aegea/Documents/TFM/GSE125895/idat", targets=targets)
+
+```
+
+```{r cars}
+bvals<- preprocess_rgset(rgset, targets)$bVals
+##bvals = readRDS("bvals_GSE125895.rds")
+colnames(bvals) <- gsub("_(.*)", "", colnames(bvals)) 
+```
+
+3. Load the annotation data from cpgid.RData file and calculate X-Ra biomarker
+
+```{r}
+load("C:/Users/aegea/Documents/TFM/ALZHEIMER/Repo_Alzheimer_Master_Thesis/Supplementary_Files/cpgid.RData")
+
+# Define the function for X-Ra calculation
+calculate_xra <- function(df, met, title, output_prefix){
+  
+  gsms <- df %>% pull(geo_accession)
+  cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+  met_subset <- met[, gsms]
+  
+  common_CpGs <- intersect(rownames(met_subset), cpgx)
+  bvals_chrX <- met_subset[common_CpGs, ]
+  metfemale <- t(bvals_chrX)
+  df$XRa <- XRa(metfemale, colnames(metfemale))
+ 
+  return(df)
+}
+
+```
+
+
+
+
+5. Fit and store Generalize Linear Models for X-Ra's effect 
+on disease status for each brain region
+
+```{r}
+
+pheno_xra <- calculate_xra(pheno, bvals) %>%
+  mutate(
+    age = as.numeric(`age:ch1`),
+    disease_status = ifelse(`disease state (dx):ch1` == "Control", 0, 1),
+    xra_100 = XRa * 100
+ 
+  )
+
+# Function to create and save GLM models for different tissue types
+create_glm_models <- function(pheno, dir_path, accession_name) {
+  # Ensure the directory exists or create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+    cat("Directory created at:", dir_path, "\n")
+  } else {
+    cat("Directory already exists at:", dir_path, "\n")
+  }
+
+  # Loop through each unique tissue type
+  unique(pheno$source_name_ch1) %>%
+    set_names() %>%
+    map(~{
+      # Filter the data for the specific tissue
+      data_subset <- filter(pheno, source_name_ch1 == .x)
+      # Fit the glm model
+      model_xra <- glm(disease_status ~ xra_100 + age, family = binomial, data = data_subset)
+      # Construct the file path using accession name and tissue type
+      model_path <- file.path(dir_path, paste0(accession_name, "_", .x, "_xra_glm.rds"))
+      # Save the model
+      saveRDS(model_xra, file = model_path)
+      cat("Model saved for", .x, "at", model_path, "\n")
+    })
+}
+
+# Variables for model saving
+main_dir <- "C:/Users/aegea/Documents/TFM/Alzheimer/XRa_models"
+accession_name <- "GSE125895"  # Set to the relevant accession number
+
+# Create models for each tissue type and save them
+create_glm_models(pheno_xra, main_dir, accession_name)
+
+```
+
+

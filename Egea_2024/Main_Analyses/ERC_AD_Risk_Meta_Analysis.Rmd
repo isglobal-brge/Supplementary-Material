@@ -1,0 +1,71 @@
+---
+title: "ERC_AD_Risk_Meta_Analysis"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+
+Meta analysis for AD risk in entorhinal cortex
+
+```{r}
+# Define the main directory for GLMs
+dir_main <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/Repo_Alzheimer_Master_Thesis/Supplementary_Files/"
+dir_glms <- file.path(dir_main, "glms_xra")
+
+# Filter files for the second meta-analysis (Entorhinal Cortex)
+filtered_files <- grep("entorhinal|ERC", files, value = TRUE)
+
+# Initialize a dataframe for the filtered results
+formeta_filtered <- data.frame(est = numeric(), se = numeric(), row.names = NULL)
+formeta_filtered
+
+
+# Process filtered GLM files
+for (file in filtered_files) {
+  # Read the GLM object from the file
+  glm_object <- readRDS(file)
+  
+  print(file)
+  
+  # Extract coefficients of interest (adjust "xra_100" if necessary)
+  coeff_info <- summary(glm_object)$coeff["xra_100", 1:2]  # Adjust as needed
+  formeta_filtered <- rbind(formeta_filtered, setNames(as.data.frame(t(coeff_info)), c("est", "se")))
+  
+  # Extract accession number and tissue type from the file name to create a unique identifier
+  accession_number <- strsplit(basename(file), "_")[[1]][1]
+ 
+  rownames(formeta_filtered)[nrow(formeta_filtered)] <- accession_number
+}
+
+```
+
+
+```{r}
+# Conduct the meta-analysis for filtered data
+matdat_filtered <- meta::metagen(formeta_filtered$est, formeta_filtered$se,
+                                 studlab = rownames(formeta_filtered),
+                                 level.ci = 0.95, sm="OR")
+
+# Open a PNG device to save plots and tables
+png("C:/Users/aegea/Documents/TFM/Alzheimer/meta_brain_XRa_entorhinal.png", width = 1600, height = 1200, res = 150)
+
+# Adjust margins to fit the plot well within the image
+par(mar = c(5, 4, 4, 2) + 0.1)  # Adjust the margins as needed
+
+# Create and save the forest plot for filtered data
+meta::forest(matdat_filtered, layout="RevMan5",
+             leftlabs=c("Study", "OR 95%CI"), xlab="Risk of AD",
+             title="Meta-analysis of GLMs with Entorhinal Cortex", col.diamond="blue", col.diamond.lines="black",
+             col.predict="red", col.square="orange", col.square.lines="orange", cex = 0.8)
+
+# Close the PNG device
+dev.off()
+
+# Print specific summary details for filtered data
+cat("\nSummary Table for Filtered Data:\n")
+cat(sprintf("Estimated overall effect (TE): %f\nP-value for total effect: %f\n",
+            summary(matdat_filtered)$TE.fixed, summary(matdat_filtered)$pval.fixed))
+
+```
+```

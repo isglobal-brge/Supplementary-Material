@@ -1,0 +1,111 @@
+---
+title: "alzheimer_Brain_GSE80970"
+author: "Aitana Egea"
+date: "2024-04-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Load the necessary libraries for data manipulation, analysis, and visualization
+library(knitr)
+library(tidyverse)         # For data manipulation and ggplot
+library(limma)             # For linear models for microarray data
+library(minfi)             # For analyzing Illumina DNA methylation arrays
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19) # Annotation package
+library(IlluminaHumanMethylation450kmanifest) # Manifest file for microarray
+library(stringr)           # String operations
+library(chrXRa)            # For chromosome X-related analysis
+library(GEOquery)          # For fetching data from GEO
+library(data.table)        # Data manipulation
+```
+
+
+```{r}
+# Load expression data from a local file
+gsm.expr <- getGEO(filename="C:/Users/aegea/Downloads/GSE80970_series_matrix.txt.gz")
+gsm.expr
+```
+
+
+```{r}
+# Extract methylation levels, annotation, and phenotype data from GEO object
+met <- exprs(gsm.expr)
+annot <- fData(gsm.expr)
+pheno <- pData(gsm.expr) 
+# Filter the phenotype data for female participants
+pheno <- pheno %>% filter(`gender:ch1` == "female")
+```
+
+
+```{r}
+# Define the function for X-Ra calculation
+calculate_xra <- function(df, met){
+  # Extract GEO accession numbers
+  gsms <- df %>% pull(geo_accession)
+  # Identify CpGs located on the X chromosome
+  cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+  # Subset methylation data for the samples of interest
+  met_subset <- met[, gsms]
+  # Find common CpGs in the subset that are also on chromosome X
+  common_CpGs <- intersect(rownames(met_subset), cpgx)
+  # Extract methylation values for these CpGs
+  bvals_chrX <- met_subset[common_CpGs, ]
+  # Transpose for X-Ra calculation
+  metfemale <- t(bvals_chrX)
+  # Calculate X-Ra and add to the dataframe
+  df$XRa <- XRa(metfemale, colnames(metfemale))
+ 
+  return(df)
+}
+
+```
+
+```{r}
+# Apply the X-Ra calculation function and further manipulate the data
+pheno_xra <- calculate_xra(pheno, met) %>%
+  mutate(
+    age = as.numeric(`age (yr):ch1`),  # Convert age to numeric
+    disease_status = ifelse(`disease status:ch1` == "Alzheimer's disease", 1, 0),  # Encode disease status as binary
+    braak_group = ifelse(`braak stage:ch1` %in% c("0", "1", "2", "3"), 0, 1),  # Classify Braak stages
+    xra_100 = XRa * 100,  # Scale X-Ra for easier interpretation
+    brain_region =`tissue:ch1`  # Include brain region information
+  )
+
+```
+
+```{r}
+# Function to create and save GLM models for different brain regions
+create_glm_models <- function(pheno, met, dir_path, accession_name) {
+  # Check if directory exists, if not, create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+    cat("Directory created at:", dir_path, "\n")
+  } else {
+    cat("Directory already exists at:", dir_path, "\n")
+  }
+
+  # Loop through each unique brain region
+  unique(pheno$brain_region) %>%
+    set_names() %>%
+    map(~{
+      # Filter data for each specific brain region
+      data_subset <- filter(pheno, brain_region == .x)
+      # Fit a generalized linear model with disease status as a function of X-Ra and age
+      model_xra <- glm(disease_status ~ xra_100 + age, family = binomial, data = data_subset)
+      # Construct the filepath and save the model
+      model_path <- file.path(dir_path, paste0(accession_name, "_", .x, "_xra_glm.rds"))
+      saveRDS(model_xra, file = model_path)
+      cat("Model saved for", .x, "at", model_path, "\n")
+    })
+}
+
+# Define main directory and accession name for saving models
+main_dir <- "C:/Users/aegea/Documents/TFM/Alzheimer/XRa_models"
+accession_name <- "GSE80970"  # Set the relevant accession number
+
+# Create and save GLM models for each tissue type
+create_glm_models(pheno_xra, met, main_dir, accession_name)
+
+```
+

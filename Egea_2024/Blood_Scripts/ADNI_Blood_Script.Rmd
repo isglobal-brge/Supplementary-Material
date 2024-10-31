@@ -1,0 +1,250 @@
+---
+title: "ADNI_Blood"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(IlluminaHumanMethylation450kmanifest)
+library(stringr)
+library(chrXRa)
+library(GEOquery)
+library(ADNIMERGE)
+library(tidyverse)
+library(meffil)
+library(ADNIMERGE)
+library(GEOquery)
+library(lmerTest)
+library(data.table)
+library(dplyr)
+library(methylumi)
+library(meffil)
+```
+
+
+```{r}
+
+# Load ADNI pheno_dataframe, and filter data for females
+adni_female <- adnimerge %>% 
+  filter(PTGENDER == "Female") %>% mutate(RID = as.numeric(RID))
+
+# Load methylation annotations data
+annotations_adni <- readxl::read_excel("C:/Users/aegea/Downloads/adni_annotation_methylation.xlsx") %>% mutate(EXAMDATE = as.Date(Edate))
+
+# Merge datasets on RID ensuring only matching RIDs in both datasets are kept
+adni_merged_female <- merge(
+  adni_female, 
+  annotations_adni, 
+  by.x = c("RID", "EXAMDATE"), 
+  by.y = c("RID", "EXAMDATE"),
+  all = FALSE
+)
+
+table(adni_merged_female$DX)
+
+```
+
+
+
+# Preprocessing functions. 
+```{r}
+
+# Reading idat files from a folder
+listIdatFiles <- function(folderPath) {
+  files <- list.files(folderPath, pattern = "\\.idat(\\.gz)?$", full.names = FALSE)
+  return(files)
+}
+
+
+addBasenameColumn <- function(targets, files, basePath) {
+  targets$Basename <- sapply(targets$barcodes, function(accession) {
+    # Find files that contain the accession name in their name
+    matching_files <- grep(accession, files, value = TRUE, ignore.case = TRUE)
+
+    # Assume the filenames contain the accession followed by _Grn or _Red
+    if(length(matching_files) > 0) {
+      basename_common <- sub("(_Grn|_Red)\\.idat(\\.gz)?$", "", matching_files[1])
+      return(file.path(basePath, basename_common))
+    }
+    
+    # Return NA if no files are found
+    return(NA)
+  }, USE.NAMES = FALSE)
+  
+  return(targets)
+}
+
+
+
+preprocess_rgset <- function(rgSet, targets) {
+  
+  detP <- detectionP(rgSet)
+  # remove poor quality samples
+  keep <- colMeans(detP) < 0.05
+  
+  # remove poor quality samples
+  rgSet <- rgSet[,keep]
+  
+  # remove poor quality samples from targets data
+  targets <- targets[keep,]
+  
+  # remove poor quality samples from detection p-value table
+  detP <- detP[,keep]
+  
+  # normalize the data; this results in a GenomicRatioSet object
+  mSetSq <- preprocessQuantile(rgSet) 
+  
+  #Filtering: 
+  detP <- detP[match(featureNames(mSetSq),rownames(detP)),] 
+
+  # remove any probes that have failed in one or more samples
+  keep <- rowSums(detP < 0.01) == ncol(mSetSq)
+  mSetSqFlt <- mSetSq[keep,]
+  mSetSqFlt <- dropLociWithSnps(mSetSqFlt)
+xReactiveProbes <- read.csv("C:/Users/aegea/Downloads/48639-non-specific-probes-Illumina450k.csv")
+  keep <- !(featureNames(mSetSqFlt) %in% xReactiveProbes$TargetID)
+  mSetSqFlt <- mSetSqFlt[keep,] 
+  mVals <- getM(mSetSqFlt)
+  bVals <- getBeta(mSetSqFlt)
+  return(list(mVals = mVals, bVals = bVals))
+}
+
+
+#Add basename column to IDAT files
+files <- listIdatFiles("C:/Users/aegea/Downloads/ADNI_DNA_Methylation_iDAT_files/ADNI_iDAT_files")
+targets <-addBasenameColumn(adni_merged_female, files, "C:/Users/aegea/Downloads/ADNI_DNA_Methylation_iDAT_files/ADNI_iDAT_files")
+
+```
+
+
+```{r}
+#Obtain B-values
+rgset<- read.metharray.exp(base="C:/Users/aegea/Downloads/ADNI_DNA_Methylation_iDAT_files/ADNI_iDAT_files", targets=targets)
+bvals<- preprocess_rgset(rgset, targets)$bVals
+bvals=readRDS("bvals_adni.rds")
+```
+
+
+```{r}
+## Select one of the replicates for each sample and subset B-values accordingly
+selected_samples <- adni_merged_female %>%
+  group_by(RID, EXAMDATE) %>%
+  slice_sample(n = 1) %>% 
+  ungroup()
+
+bvals_filtered <- bvals[, selected_samples$barcodes]
+pheno_xra = selected_samples
+
+```
+
+
+```{r}
+
+# Estimate cell counts from methylation vavues using meffil
+met = bvals[,  pheno_meffil$barcodes]
+cells = meffilEstimateCellCountsFromBetas(met, "blood gse35069 complete")
+pheno_meffil = cbind(pheno_meffil, cells)
+```
+
+
+
+```{r}
+
+# Calculate X-Ra for blood data
+
+Optimth <- function(mm, cpgids){
+  ig <- IGlevels(mm, cpgids)
+  eg <- EGlevels(mm, cpgids)
+  
+  dif <- function(x, ig, eg){
+    igden <- density(ig, na.rm = TRUE)
+    egden <- density(eg, na.rm = TRUE)
+    which <- order(abs((igden$x -x)))[1]
+    -(egden$y[which] - igden$y[which])^2
+  }
+  
+  optimize(dif, ig, eg, interval = c(0.2,0.5), maximum = TRUE)$maximum
+}
+
+
+
+```
+
+
+
+
+
+```{r}
+load("C:/Users/aegea/Downloads/cpgid.RData")
+
+# Compute X-Ra optimized for blood data
+cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+smmet <- intersect(rownames(met), cpgx)
+metfemale = t(met[smmet,])
+tha <- Optimth(metfemale, colnames(metfemale))
+
+pheno_meffil$xra_new = XRa(metfemale, colnames(metfemale), threshold=tha)
+pheno_meffil = pheno_meffil %>% mutate(xra_new_100 = xra_new*100) %>% mutate(disease_status=ifelse(DX=="CN", 0, 1))
+# saveRDS(pheno_meffil, "adni_pheno_meffil_xra_new.rds")
+
+```
+
+
+
+```{r}
+
+# Plot the distribution of IG and EG values for controls and for AD/MCI patients
+pheno_meffil_ad = pheno_meffil %>% filter(DX != "CN")
+
+metfemale_ad = metfemale[pheno_meffil_ad$barcodes, ]
+ig <- IGlevels(metfemale_ad, colnames(metfemale_ad))
+eg <- EGlevels(metfemale_ad, colnames(metfemale_ad))
+  
+png(paste0("ad_distribution_comparison_adni.png"), width = 800, height = 600)
+to_plotIG <- density(ig, na.rm = TRUE)
+to_plotEG <- density(eg, na.rm = TRUE)
+  
+  plot(to_plotIG,
+       lwd = 3, ylim = c(0, 5),
+       main = paste0("Distribution comparison - AD patients (whole blood)" ), xlab = "CpG methylation levels")
+  lines(to_plotEG, lwd = 3, lty = 2, col = "red")
+  legend("topright", legend = c("CpGs levels in inactive genes", "CpGs levels in escapees"), 
+         col = c("black", "red"), lwd = c(3, 3), lty = c(1, 2))
+  abline(v = 0.2, col = "blue")
+  dev.off()
+  
+pheno_meffil_cn = pheno_meffil %>% filter(DX == "CN")
+
+metfemale_cn = metfemale[pheno_meffil_cn$barcodes, ]
+ig <- IGlevels(metfemale_cn, colnames(metfemale_cn))
+eg <- EGlevels(metfemale_cn, colnames(metfemale_cn))
+
+png(paste0("cn_distribution_comparison_adni.png"), width = 800, height = 600)
+to_plotIG <- density(ig, na.rm = TRUE)
+to_plotEG <- density(eg, na.rm = TRUE)
+  
+  plot(to_plotIG,
+       lwd = 3, ylim = c(0, 5),
+       main = paste0("Distribution comparison - CN patients (whole blood)" ), xlab = "CpG methylation levels")
+  lines(to_plotEG, lwd = 3, lty = 2, col = "red")
+  legend("topright", legend = c("CpGs levels in inactive genes", "CpGs levels in escapees"), 
+         col = c("black", "red"), lwd = c(3, 3), lty = c(1, 2))
+  abline(v = 0.2, col = "blue")
+  dev.off()
+```
+
+
+```{r}
+
+# Fit GLM for longitudinal data asessing the effect of X-Ra in disease_status and save as R object
+model = glmer(disease_status ~ visit + AGE + xra_new_100 + Bcell + CD4T + CD8T + NK + Mono + Neu + Eos + (1 | RID), data=pheno_meffil, family="binomial")
+summary(model)
+
+## pheno_meffil = readRDS("C:/Users/aegea/Documents/TFM/ALZHEIMER/adni_pheno_meffil_xra_new.rds")
+# saveRDS(model, "glms_blood/adni_glm.rds")
+```
+

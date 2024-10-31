@@ -1,0 +1,127 @@
+---
+title: "AD_Risk_Meta_Analysis"
+author: "Aitana Egea"
+date: "2024-10-01"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(meta)
+library(tools)
+```
+
+```{r}
+# Define the main directory for GLMs
+dir_main <- "C:/Users/aegea/Documents/TFM/ALZHEIMER/Repo_Alzheimer_Master_Thesis/Supplementary_Files/"
+dir_glms <- file.path(dir_main, "glms_xra")
+
+# Retrieve full paths for all RDS files containing GLM results
+files <- list.files(path = dir_glms, pattern = "\\.rds$", full.names = TRUE)
+
+
+```
+
+
+```{r}
+
+# Mapping from filenames to brain regions (adjust this mapping according to your specific filenames)
+file_region_map <- c(
+  "crb" = "Cerebellum",
+  "cerebellum" = "Cerebellum",
+  "cbl" = "Cerebellum",
+  "erc" = "Entorhinal Cortex",
+  "mtg" = "Middle Temporal Gyrus",
+  "hippo" = "Hippocampus",
+  "gyrus" = "Middle Frontal Gyrus",
+  "temporal" = "Superior Temporal Gyrus"
+)
+
+# Name mapping for standardization, ensuring proper capitalization
+name_map <- c(
+  crb = "Cerebellum", cbl = "Cerebellum", 
+  erc = "Entorhinal Cortex", 
+  dlpfc = "Dorsolateral Prefrontal Cortex", 
+  mtg = "Middle Temporal Gyrus", 
+  hippo = "Hippocampus", 
+  ca1 = "CA1"
+)
+
+# Initialize dataframe for results
+formeta <- data.frame(est = numeric(), se = numeric(), brain_region = character(), row.names = NULL)
+
+# Process each file
+for (file in files) {
+  glm_object <- readRDS(file)
+  coeff_info <- summary(glm_object)$coefficients["xra_100", 1:2]
+  file_parts <- strsplit(basename(file), "_")[[1]]
+  accession <- toupper(file_parts[1])  # Ensure uppercase for the accession code
+  region_key <- tolower(file_parts[2])
+  full_region_name <- ifelse(region_key %in% names(name_map), name_map[region_key], tools::toTitleCase(region_key))
+  row_label <- sprintf("%s (%s)", full_region_name, accession)  # Reformat to put the region name first
+  formeta <- rbind(formeta, cbind(setNames(as.data.frame(t(coeff_info)), c("est", "se")), brain_region = full_region_name))
+  rownames(formeta)[nrow(formeta)] <- row_label
+}
+
+# Print formatted row names for verification
+print(rownames(formeta))
+
+
+```
+
+
+```{r}
+# Comprehensive color map
+color_map <- c(
+  "Cerebellum" = "#E41A1C",  # Red
+  "Cerebellar Cortex" = "#E41A1C",  # Red, aligned with Cerebellum
+  "Cingulate Gyrus" = "#FFFF33",  # Yellow
+  "Dentate Gyrus" = "#FF7F00",  # Orange
+  "Dorsolateral Prefrontal Cortex" = "#A65628",  # Brown
+  "Entorhinal Cortex" = "#377EB8",  # Blue
+  "Frontal Cortex" = "#A65628",  # Brown
+  "Hippocampus" = "#4B0082",  # Indigo
+  "CA1" = "slateblue",  # 
+  "Locus Coeruleus" = "#999999",  # Gray
+  "Middle Frontal Gyrus" = "mediumseagreen",  # Sea Green
+  "Middle Temporal Gyrus" = "#984EA3",  # Purple
+  "Prefrontal Cortex" = "#F781BF",  # Pink
+  "Substantia Nigra" = "#A65628",  # Brown, consistent with other cortical areas
+  "Superior Temporal Gyrus" = "#4DAF4A"  # Green
+)
+
+formeta$Color <- sapply(formeta$brain_region, function(br) {
+  ifelse(is.na(color_map[br]), "gray", color_map[br])
+})
+
+```
+
+
+```{r}
+
+formeta <- formeta[order(formeta$brain_region),]
+
+
+matdat = meta::metagen(formeta$est, formeta$se,
+                                 studlab = rownames(formeta),
+                                 level.ci = 0.95, sm="OR")
+# Set up the plotting parameters and margins
+png("C:/Users/aegea/Documents/TFM/Alzheimer/AD_risk_Meta_Analysis.png", width=800, height=500)
+par(mar = c(5, 4, 4, 8) + 0.1)  # Adjusting the right margin to be larger
+
+# Conduct the meta-analysis
+matdat <- meta::metagen(formeta$est, formeta$se, studlab = rownames(formeta), level.ci = 0.95, sm="OR")
+
+
+
+plot.new()
+
+meta::forest(matdat, layout="RevMan5",
+             leftlabs=c("Study", "OR 95%CI"), xlab="Risk of AD",
+             title="Meta-analysis of GLMs in whole brain", col.diamond="blue", col.diamond.lines="black",
+             col.predict="turquoise", col.square=formeta$Color, col.square.lines=formeta$Color, cex = 0.8)
+
+
+dev.off()
+```
+

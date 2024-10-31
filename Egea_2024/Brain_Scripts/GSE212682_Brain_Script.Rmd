@@ -1,0 +1,491 @@
+---
+title: "Alzheimer_Brain_GSE122682"
+author: "Aitana Egea"
+date: "2024-09-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#Load the necessary libraries
+library(knitr)
+library(tidyverse)
+library(limma)
+library(minfi)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library(IlluminaHumanMethylation450kmanifest)
+library(RColorBrewer)
+library(missMethyl)
+library(minfiData)
+library(Gviz)
+library(DMRcate)
+library(stringr)
+library(chrXRa)
+library(GEOquery)
+library(data.table)
+```
+
+
+```{r}
+
+gsm.expr <- getGEO("GSE212682", destdir = ".")[[1]]
+
+```
+
+
+# PIPELINE FUNCTIONS. 
+```{r}
+
+# Función para leer los nombres de los archivos .idat de una carpeta
+listIdatFiles <- function(folderPath) {
+  # Obtener todos los nombres de archivos .idat y .idat.gz en la carpeta
+  files <- list.files(folderPath, pattern = "\\.idat(\\.gz)?$", full.names = FALSE)
+  return(files)
+}
+
+
+addBasenameColumn <- function(targets, files, basePath) {
+  # Modificar la columna Basename para que contenga la parte base del nombre de archivo
+  targets$Basename <- sapply(targets$geo_accession, function(accession) {
+    # Encontrar archivos que coincidan con la accession en su nombre
+    matching_files <- grep(accession, files, value = TRUE)
+    
+    # Asumir que los nombres de los archivos contienen la accession seguida de _Grn o _Red
+    # Extraer la parte base común del nombre de archivo, excluyendo el sufijo y la extensión
+    # Esta operación asume que todos los archivos para una muestra tienen el mismo prefijo
+    if(length(matching_files) > 0) {
+      basename_common <- sub("(_Grn|_Red)\\.idat(\\.gz)?$", "", matching_files[1])
+      return(paste0(basePath, "/", basename_common))
+    }
+    
+    return(NA)
+  })
+  
+  return(targets)
+}
+
+
+preprocess_rgset <- function(rgSet, targets) {
+  
+  detP <- detectionP(rgSet)
+  # remove poor quality samples
+  keep <- colMeans(detP) < 0.05
+  
+  # remove poor quality samples
+  rgSet <- rgSet[,keep]
+  
+  # remove poor quality samples from targets data
+  targets <- targets[keep,]
+  
+  # remove poor quality samples from detection p-value table
+  detP <- detP[,keep]
+  
+  # normalize the data; this results in a GenomicRatioSet object
+  mSetSq <- preprocessQuantile(rgSet) 
+  
+  #Filtering: 
+  detP <- detP[match(featureNames(mSetSq),rownames(detP)),] 
+
+  # remove any probes that have failed in one or more samples
+  keep <- rowSums(detP < 0.01) == ncol(mSetSq)
+  mSetSqFlt <- mSetSq[keep,]
+  mSetSqFlt <- dropLociWithSnps(mSetSqFlt)
+ 
+  
+ # C:\Users\aegea\Downloads\48639-non-specific-probes-Illumina450k.csv
+xReactiveProbes <- read.csv("C:/Users/aegea/Downloads/48639-non-specific-probes-Illumina450k.csv")
+  keep <- !(featureNames(mSetSqFlt) %in% xReactiveProbes$TargetID)
+  mSetSqFlt <- mSetSqFlt[keep,] 
+  mVals <- getM(mSetSqFlt)
+  bVals <- getBeta(mSetSqFlt)
+  return(list(mVals = mVals, bVals = bVals))
+}
+```
+
+
+
+```{r}
+pheno <- pData(gsm.expr) %>% filter(`Sex:ch1` == "female")
+pheno <- pheno[-78, ]
+```
+
+
+```{r}
+unique_subjects <- pheno %>%
+  select(source_name_ch1, `conf_diag:ch1`) %>%
+  distinct()
+
+# Count the number of unique individuals for each disease status
+disease_counts <- unique_subjects %>%
+  group_by(`conf_diag:ch1`) %>%
+  summarise(count = n())
+
+disease_counts
+```
+
+
+
+```{r}
+# Specify the path to the tar file and the target directory for extraction
+tarFilePath <- "C:/Users/aegea/Downloads/GSE212682_RAW.tar"
+targetDirectory <- "C:/Users/aegea/Documents/TFM/GSE212682/idat"
+
+# Create the target directory if it doesn't exist
+if (!dir.exists(targetDirectory)) {
+  dir.create(targetDirectory, recursive = TRUE)
+}
+
+# Extract the tar file
+untar(tarFilePath, exdir = targetDirectory)
+```
+
+
+```{r}
+files <- listIdatFiles("C:/Users/aegea/Documents/TFM/GSE212682/idat")
+targets <-addBasenameColumn(pheno, files, "C:/Users/aegea/Documents/TFM/GSE212682/idat")
+
+```
+
+```{r}
+targets <- targets[-78, ]
+rgset<- read.metharray.exp(base="C:/Users/aegea/Documents/TFM/GSE212682/idat", targets=targets)
+
+```
+
+```{r cars}
+bvals<- preprocess_rgset(rgset, targets)$bVals
+
+```
+
+```{r}
+colnames(bvals)<- gsub("_(.*)", "", colnames(bvals))
+```
+
+
+```{r}
+# Create a logical vector to identify which geo_accessions are in the column names of bvals
+matches <- pheno$geo_accession %in% colnames(bvals)
+
+# Filter pheno to only include matches
+pheno <- pheno[matches, ]
+
+# Check again, should return all TRUE
+pheno$geo_accession %in% colnames(bvals)
+
+```
+
+
+```{r}
+
+# Define the function for X-Ra calculation
+calculate_xra <- function(df, met, title, output_prefix){
+  
+  gsms <- df %>% pull(geo_accession)
+  cpgx <- rownames(cpgid)[which(cpgid$Chromosome=="X")]
+
+  met_subset <- met[, gsms]
+  
+  common_CpGs <- intersect(rownames(met_subset), cpgx)
+  bvals_chrX <- met_subset[common_CpGs, ]
+  metfemale <- t(bvals_chrX)
+  df$XRa <- XRa(metfemale, colnames(metfemale))
+ 
+  return(df)
+}
+
+
+```
+
+
+
+5. Fit and store Generalize Linear Models for X-Ra's effect 
+on disease status for cerebellum and entorhinal cortex
+
+```{r}
+
+load("C:/Users/aegea/Documents/TFM/ALZHEIMER/Repo_Alzheimer_Master_Thesis/Supplementary_Files/cpgid.RData")
+
+pheno_xra <- calculate_xra(pheno, bvals) %>%
+  mutate(
+    brain_region = `brain_region:ch1`, 
+    disease_status = ifelse(`conf_diag:ch1` == 0, 0, 1),
+    xra_100 = XRa * 100
+ 
+  )
+
+# Function to create and save GLM models for different tissue types
+create_glm_models <- function(pheno, met, dir_path, accession_name) {
+  # Ensure the directory exists or create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+    cat("Directory created at:", dir_path, "\n")
+  } else {
+    cat("Directory already exists at:", dir_path, "\n")
+  }
+
+  # Loop through each unique tissue type
+  unique(pheno$brain_region) %>%
+    set_names() %>%
+    map(~{
+      # Filter the data for the specific tissue
+      data_subset <- filter(pheno, brain_region == .x)
+      # Fit the glm model
+      model_xra <- glm(disease_status ~ xra_100, family = binomial, data = data_subset)
+      # Construct the file path using accession name and tissue type
+      model_path <- file.path(dir_path, paste0(accession_name, "_", .x, "_xra_glm.rds"))
+      # Save the model
+      saveRDS(model_xra, file = model_path)
+      cat("Model saved for", .x, "at", model_path, "\n")
+    })
+}
+
+# Variables for model saving
+main_dir <- "C:/Users/aegea/Documents/TFM/Alzheimer/XRa_models"
+accession_name <- "GSE122682"  # Set to the relevant accession number
+
+# Create models for each tissue type and save them
+create_glm_models(pheno_xra, met, main_dir, accession_name)
+
+```
+
+Analyze extra variables: effect of X-Ra on brain cell proportion and NIA scores
+```{r}
+#pheno_xra = readRDS("C:/Users/aegea/Documents/TFM/ALZHEIMER/pheno_dfs/pheno_GSE212682.rds")
+#met = readRDS("C:/Users/aegea/Documents/TFM/ALZHEIMER/Betas/bvals_GSE212682.rds")
+
+library(dplyr)
+
+pheno_xra <- pheno_xra %>%
+  mutate(# Convert 'proportion_astrocytes:ch1' to numeric
+         astrocyte_proportion= as.numeric(as.character(`proportion_astrocytes:ch1`)),
+         # Convert 'proportion_endothelial:ch1' to numeric
+         endothelial_proportion = as.numeric(as.character(`proportion_endothelial:ch1`)),
+         # Convert 'proportion_microglia:ch1' to numeric
+         microglia_proportion = as.numeric(as.character(`proportion_microglia:ch1`)),
+         # Convert 'proportion_neurons:ch1' to numeric
+         neuron_proportion = as.numeric(as.character(`proportion_neurons:ch1`)),
+         # Convert 'proportion_olig_opc:ch1' to numeric
+         olig_opc_proportion = as.numeric(as.character(`proportion_olig_opc:ch1`)))
+
+pheno_xra$nia_a_numeric <- as.numeric(as.character(pheno_xra$`niaaaascore:ch1` ))
+pheno_xra$nia_b_numeric <- as.numeric(as.character(pheno_xra$`niaaabscore:ch1` ))
+pheno_xra$nia_c_numeric <- as.numeric(as.character(pheno_xra$`niaaacscore:ch1` ))
+```
+
+
+
+Examine correlation between X-Ra and astrocyte, neuron and endothelial cell proportions 
+
+```{r}
+library(ggplot2)
+library(lme4)
+library(dplyr)
+
+pheno_ad = pheno_xra %>% filter(disease_status == 1)
+mod = lmerTest::lmer(astrocyte_proportion ~  xra_100 + (1|source_name_ch1), data=pheno_ad)
+summary(mod)
+
+library(modelsummary)
+sjPlot::tab_model(mod, show.re.var= TRUE,  pred.labels =c("(Intercept)", "XRa (%)"),             dv.labels= "Effect of XRa on astrocyte proportion")
+
+# Predict values from the model including confidence intervals
+pred <- predict(mod, newdata = pheno_ad, re.form = NA, se.fit = TRUE)
+
+# Create a data frame for plotting
+plot_data <- pheno_ad %>%
+  mutate(fit = pred$fit,
+         se = pred$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+
+# Create the plot
+model_plot <- ggplot(plot_data, aes(x = xra_100, y = astrocyte_proportion)) +
+  geom_point() +  # Original data points
+  geom_point(aes(y = fit), color = "seagreen3") +  # Fitted values
+  geom_line(aes(y = fit), color = "seagreen3") +  # Fitted line
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "seagreen3") +  # Confidence interval
+  labs(x = "X-Ra Levels (%)", y = "Astrocyte Proportion") +
+  ggtitle("Effect of X-Ra levels on astrocyte proportion in brain") + theme(text = element_text(size = 14),  # Increase base font size for all text
+        plot.title = element_text(size = 20),  # Increase title size
+        axis.title = element_text(size = 16),  # Increase axis titles size
+        axis.text = element_text(size = 14))  # Increase axis text size
+
+
+# Save the plot
+png("astrocyte_proportion_xra.png", width = 800, height = 600)
+print(model_plot)
+dev.off()
+```
+
+```{r}
+library(ggplot2)
+library(lme4)
+library(dplyr)
+
+mod = lmerTest::lmer(neuron_proportion ~  xra_100 + (1|source_name_ch1), data=pheno_ad)
+summary(mod)
+
+library(modelsummary)
+sjPlot::tab_model(mod, show.re.var= TRUE,  pred.labels =c("(Intercept)", "XRa (%)"),             dv.labels= "Effect of XRa on neuron proportion")
+
+
+# Predict values from the model including confidence intervals
+pred <- predict(mod, newdata = pheno_ad, re.form = NA, se.fit = TRUE)
+
+# Create a data frame for plotting
+plot_data <- pheno_ad %>%
+  mutate(fit = pred$fit,
+         se = pred$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+
+# Create the plot
+model_plot <- ggplot(plot_data, aes(x = xra_100, y = neuron_proportion)) +
+  geom_point() +  # Original data points
+  geom_point(aes(y = fit), color = "cornflowerblue") +  # Fitted values
+  geom_line(aes(y = fit), color = "cornflowerblue") +  # Fitted line
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "cornflowerblue") +  # Confidence interval
+  labs(x = "X-Ra Levels (%)", y = "Neuron Proportion") +
+  ggtitle("Effect of X-Ra levels on neuron proportion in brain")  + theme(text = element_text(size = 14),  # Increase base font size for all text
+        plot.title = element_text(size = 20),  # Increase title size
+        axis.title = element_text(size = 16),  # Increase axis titles size
+        axis.text = element_text(size = 14))  # Increase axis text size
+
+
+# Save the plot
+png("neuron_proportion_xra.png", width = 800, height = 600)
+print(model_plot)
+dev.off()
+```
+```{r}
+library(ggplot2)
+library(lme4)
+library(dplyr)
+
+mod = lmerTest::lmer(endothelial_proportion ~  xra_100 + (1|source_name_ch1), data=pheno_ad)
+summary(mod)
+
+library(modelsummary)
+sjPlot::tab_model(mod, show.re.var= TRUE,  pred.labels =c("(Intercept)", "XRa (%)"), dv.labels= "Effect of XRa on endothelial cell proportion")
+
+# Predict values from the model including confidence intervals
+pred <- predict(mod, newdata = pheno_ad, re.form = NA, se.fit = TRUE)
+
+# Create a data frame for plotting
+plot_data <- pheno_ad %>%
+  mutate(fit = pred$fit,
+         se = pred$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+
+# Create the plot
+model_plot <- ggplot(plot_data, aes(x = xra_100, y = endothelial_proportion)) +
+  geom_point() +  # Original data points
+  geom_point(aes(y = fit), color = "firebrick2") +  # Fitted values
+  geom_line(aes(y = fit), color = "firebrick2") +  # Fitted line
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "firebrick2") +  # Confidence interval
+  labs(x = "X-Ra Levels (%)", y = "Endothelial cell Proportion") +
+  ggtitle("Effect of X-Ra levels on endothelial proportion in brain") +
+  theme(text = element_text(size = 14),  # Increase base font size for all text
+        plot.title = element_text(size = 20),  # Increase title size
+        axis.title = element_text(size = 16),  # Increase axis titles size
+        axis.text = element_text(size = 14))  # Increase axis text size
+
+# Save the plot
+png("endothelial_proportion_xra.png", width = 800, height = 600)
+print(model_plot)
+dev.off()
+
+```
+
+
+Create figure for representation of all three models
+```{r}
+# Load required libraries
+library(ggplot2)
+library(lme4)
+library(dplyr)
+library(cowplot)
+
+# Generate the first plot
+pheno_ad = pheno_xra %>% filter(disease_status == 1)
+mod1 = lmerTest::lmer(astrocyte_proportion ~  xra_100 + (1|source_name_ch1), data=pheno_ad)
+pred1 <- predict(mod1, newdata = pheno_ad, re.form = NA, se.fit = TRUE)
+plot_data1 <- pheno_ad %>%
+  mutate(fit = pred1$fit,
+         se = pred1$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+plot1 <- ggplot(plot_data1, aes(x = xra_100, y = astrocyte_proportion)) +
+  geom_point() + 
+  geom_point(aes(y = fit), color = "seagreen3") +  
+  geom_line(aes(y = fit), color = "seagreen3") +  
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "seagreen3") +  
+  labs(x = "X-Ra Levels (%)", y = "Astrocyte Proportion") +
+  ggtitle("Effect of X-Ra levels on astrocyte proportion in brain") + 
+  theme(text = element_text(size = 14),  
+        plot.title = element_text(size = 20),  
+        axis.title = element_text(size = 16),  
+        axis.text = element_text(size = 14)) 
+
+# Generate the second plot
+mod2 = lmerTest::lmer(neuron_proportion ~  xra_100 + (1|source_name_ch1), data=pheno_ad)
+pred2 <- predict(mod2, newdata = pheno_ad, re.form = NA, se.fit = TRUE)
+plot_data2 <- pheno_ad %>%
+  mutate(fit = pred2$fit,
+         se = pred2$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+plot2 <- ggplot(plot_data2, aes(x = xra_100, y = neuron_proportion)) +
+  geom_point() +  
+  geom_point(aes(y = fit), color = "cornflowerblue") +  
+  geom_line(aes(y = fit), color = "cornflowerblue") +  
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "cornflowerblue") +  
+  labs(x = "X-Ra Levels (%)", y = "Neuron Proportion") +
+  ggtitle("Effect of X-Ra levels on neuron proportion in brain")  + 
+  theme(text = element_text(size = 14),  
+        plot.title = element_text(size = 20),  
+        axis.title = element_text(size = 16),  
+        axis.text = element_text(size = 14))
+
+# Generate the third plot
+mod3 = lmerTest::lmer(endothelial_proportion ~  xra_100 + (1|source_name_ch1), data=pheno_ad)
+pred3 <- predict(mod3, newdata = pheno_ad, re.form = NA, se.fit = TRUE)
+plot_data3 <- pheno_ad %>%
+  mutate(fit = pred3$fit,
+         se = pred3$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+plot3 <- ggplot(plot_data3, aes(x = xra_100, y = endothelial_proportion)) +
+  geom_point() +  
+  geom_point(aes(y = fit), color = "firebrick2") +  
+  geom_line(aes(y = fit), color = "firebrick2") +  
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "firebrick2") +  
+  labs(x = "X-Ra Levels (%)", y = "Endothelial cell Proportion") +
+  ggtitle("Effect of X-Ra levels on endothelial proportion in brain") +
+  theme(text = element_text(size = 14),  
+        plot.title = element_text(size = 20),  
+        axis.title = element_text(size = 16),  
+        axis.text = element_text(size = 14))
+
+# Arrange the plots in the desired format
+combined_plot <- plot_grid(
+  plot1, plot2, plot3,
+  ncol = 2, nrow = 2, # Define two columns and two rows
+  align = 'v', # Align vertically
+  rel_heights = c(1, 0.5) # Make the bottom row shorter
+)
+
+# The third plot will be centered below the first two
+# Adjust the bottom row to center the third plot if necessary
+combined_plot <- plot_grid(
+  plot_grid(plot1, plot2, ncol = 2, align = 'v'),
+  plot3,
+  ncol = 1, align = 'h', rel_heights = c(1, 0.5)
+)
+
+# Save the combined plot
+ggsave("cell_proportions_combined_plot.png", combined_plot, width = 10, height = 15)
+
+
+```
+
