@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.269">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Augusto Anguita Ruiz">
+
+<title>dsExposome: Use case 3</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
+
+
+<script src="use_case_3_files/libs/clipboard/clipboard.min.js"></script>
+<script src="use_case_3_files/libs/quarto-html/quarto.js"></script>
+<script src="use_case_3_files/libs/quarto-html/popper.min.js"></script>
+<script src="use_case_3_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="use_case_3_files/libs/quarto-html/anchor.min.js"></script>
+<link href="use_case_3_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="use_case_3_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="use_case_3_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="use_case_3_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="use_case_3_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+<script src="use_case_3_files/libs/htmlwidgets-1.5.4/htmlwidgets.js"></script>
+<link href="use_case_3_files/libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
+<script src="use_case_3_files/libs/datatables-binding-0.24/datatables.js"></script>
+<script src="use_case_3_files/libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<link href="use_case_3_files/libs/dt-core-1.11.3/css/jquery.dataTables.min.css" rel="stylesheet">
+<link href="use_case_3_files/libs/dt-core-1.11.3/css/jquery.dataTables.extra.css" rel="stylesheet">
+<script src="use_case_3_files/libs/dt-core-1.11.3/js/jquery.dataTables.min.js"></script>
+<link href="use_case_3_files/libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet">
+<script src="use_case_3_files/libs/crosstalk-1.2.0/js/crosstalk.min.js"></script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#description" id="toc-description" class="nav-link active" data-scroll-target="#description">Description</a></li>
+  <li><a href="#connection-to-the-opal-server" id="toc-connection-to-the-opal-server" class="nav-link" data-scroll-target="#connection-to-the-opal-server">Connection to the Opal server</a></li>
+  <li><a href="#loading-the-exposome-data" id="toc-loading-the-exposome-data" class="nav-link" data-scroll-target="#loading-the-exposome-data">Loading the exposome data</a></li>
+  <li><a href="#loading-the-phenotype-data" id="toc-loading-the-phenotype-data" class="nav-link" data-scroll-target="#loading-the-phenotype-data">Loading the phenotype data</a></li>
+  <li><a href="#merging-exposome-and-phenotype" id="toc-merging-exposome-and-phenotype" class="nav-link" data-scroll-target="#merging-exposome-and-phenotype">Merging exposome and phenotype</a></li>
+  <li><a href="#exwas" id="toc-exwas" class="nav-link" data-scroll-target="#exwas">ExWAS</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">dsExposome: Use case 3</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Author</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    Augusto Anguita Ruiz 
+  </div>
+    <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            ISGlobal
+          </p>
+      </div>
+    </div>
+
+<div class="quarto-title-meta">
+
+      
+  
+    
+  </div>
+  
+
+</header>
+
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-1_bb2743767b5719c41741d401f52c27f2">
+<style type="text/css">
+p, figcaption {
+  text-align: justify !important;
+}
+</style>
+</div>
+<section id="description" class="level2">
+<h2 class="anchored" data-anchor-id="description">Description</h2>
+<p>The main aim of this chapter is to illustrate how to perform an exposome analysis on a multi-centre study framework using DataSHIELD. Particularly, we will cover how to apply Exposome Wide Association Analysis (ExWAS). To illustrate the power and possibilities emanating from DataSHIELD in this context, we will replicate some of the analyses conducted in <span class="citation" data-cites="warembourg2019early">(<a href="#ref-warembourg2019early" role="doc-biblioref">Warembourg et al. 2019</a>)</span>, in which the association between a wide range of prenatal and postnatal exposures and blood pressure in children is investigated.</p>
+</section>
+<section id="connection-to-the-opal-server" class="level2">
+<h2 class="anchored" data-anchor-id="connection-to-the-opal-server">Connection to the Opal server</h2>
+<p>In this section, we will cover how to manipulate and prepare input data with DataSHIELD according to the needs of the functions available in the dsExposomeClient package.</p>
+<p>We start by creating the connection to the opal server using an user who have DataSHIELD permissions to Opal servers. Please, note that in our example, all datasets are hosted in the same Opal but each cohort sub-dataset is accessed separately. In the case each cohort dataset was available in a different Opal, the way of login data would be the same but specifying different connection details.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-2_c19e38ed57e7430844753dee2e3388de">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(DSOpal)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(DSI)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(dsBaseClient)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(dsExposomeClient)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(dplyr)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(ggplot2)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(ggrepel)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(tidyverse)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(ggrepel)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(reshape2)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span>(RColorBrewer)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>builder <span class="ot">&lt;-</span> DSI<span class="sc">::</span><span class="fu">newDSLoginBuilder</span>()</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>builder<span class="sc">$</span><span class="fu">append</span>(<span class="at">server =</span> <span class="st">"BIB"</span>, <span class="at">url =</span> <span class="st">"https://opal.isglobal.org/repo"</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>               <span class="at">user =</span>  <span class="st">"invited"</span>, <span class="at">password =</span> <span class="st">"Invited88_@"</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>               <span class="at">profile =</span> <span class="st">"rock-inma"</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>builder<span class="sc">$</span><span class="fu">append</span>(<span class="at">server =</span> <span class="st">"EDEN"</span>, <span class="at">url =</span> <span class="st">"https://opal.isglobal.org/repo"</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>               <span class="at">user =</span>  <span class="st">"invited"</span>, <span class="at">password =</span> <span class="st">"Invited88_@"</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>               <span class="at">profile =</span> <span class="st">"rock-inma"</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>builder<span class="sc">$</span><span class="fu">append</span>(<span class="at">server =</span> <span class="st">"KANC"</span>, <span class="at">url =</span> <span class="st">"https://opal.isglobal.org/repo"</span>,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>               <span class="at">user =</span>  <span class="st">"invited"</span>, <span class="at">password =</span> <span class="st">"Invited88_@"</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>               <span class="at">profile =</span> <span class="st">"rock-inma"</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>builder<span class="sc">$</span><span class="fu">append</span>(<span class="at">server =</span> <span class="st">"MoBA"</span>, <span class="at">url =</span> <span class="st">"https://opal.isglobal.org/repo"</span>,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>               <span class="at">user =</span>  <span class="st">"invited"</span>, <span class="at">password =</span> <span class="st">"Invited88_@"</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>               <span class="at">profile =</span> <span class="st">"rock-inma"</span>)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>builder<span class="sc">$</span><span class="fu">append</span>(<span class="at">server =</span> <span class="st">"Rhea"</span>, <span class="at">url =</span> <span class="st">"https://opal.isglobal.org/repo"</span>,</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>               <span class="at">user =</span>  <span class="st">"invited"</span>, <span class="at">password =</span> <span class="st">"Invited88_@"</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>               <span class="at">profile =</span> <span class="st">"rock-inma"</span>)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>builder<span class="sc">$</span><span class="fu">append</span>(<span class="at">server =</span> <span class="st">"INMASAB"</span>, <span class="at">url =</span> <span class="st">"https://opal.isglobal.org/repo"</span>,</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>               <span class="at">user =</span>  <span class="st">"invited"</span>, <span class="at">password =</span> <span class="st">"Invited88_@"</span>,</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>               <span class="at">profile =</span> <span class="st">"rock-inma"</span>)</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>logindata <span class="ot">&lt;-</span> builder<span class="sc">$</span><span class="fu">build</span>()</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>conns <span class="ot">&lt;-</span> DSI<span class="sc">::</span><span class="fu">datashield.login</span>(<span class="at">logins =</span> logindata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="loading-the-exposome-data" class="level2">
+<h2 class="anchored" data-anchor-id="loading-the-exposome-data">Loading the exposome data</h2>
+<p>Next, we will load all the resources available in the Opal server, corresponding to each cohort exposomeSet file, using the <code>DSI::datashield.assign.resource()</code> function. This function takes the connections to the server created in the previous code chunk to assign all available resource objects from the the Opal to an R object in the DataSHIELD remote session. As it can be seen in the code, resources in DataSHIELD are called in the function following the next structure “NameOfOpalProject.NameOfResource”.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-3_246a10339212e23305687129097cdd51">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># We assign post-natal data from all cohorts to an object called resource_pos</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">1</span>], <span class="st">"resource_pos"</span>, <span class="st">"HELIX.postnatal_BIB"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">2</span>], <span class="st">"resource_pos"</span>, <span class="st">"HELIX.postnatal_EDE"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">3</span>], <span class="st">"resource_pos"</span>, <span class="st">"HELIX.postnatal_KAN"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">4</span>], <span class="st">"resource_pos"</span>, <span class="st">"HELIX.postnatal_MOB"</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">5</span>], <span class="st">"resource_pos"</span>, <span class="st">"HELIX.postnatal_RHE"</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">6</span>], <span class="st">"resource_pos"</span>, <span class="st">"HELIX.postnatal_SAB"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Then, we have to resolve the resources and retrieve the data in the remote session (server-side). For that, we will use the <code>DSI::datashield.assign.expr()</code> function. This function will assign the result of the execution of the argument expr to an R object called exposome_set in the Datashield remote session. In particular, we run the function <code>as.resource.object()</code>, which is the DataSHIELD function in charge of resolving resources (it coerces the resource to an internal data object that depends on the implementation of the object). As a result, we will get an R object (here named “exposome_Set_pos” for post-natal data, and “exposome_Set_pre” for pre-natal data) containing the “exposomeSets” files for all cohorts.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-4_30895ac65cacee57d08a2de9f6364da3">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># We resolve the resource for post-natal data</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.expr</span>(<span class="at">conns =</span> conns, <span class="at">symbol =</span> <span class="st">"exposome_set_pos"</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                            <span class="at">expr =</span> <span class="fu">as.symbol</span>(<span class="st">"as.resource.object(resource_pos)"</span>), <span class="at">async =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="loading-the-phenotype-data" class="level2">
+<h2 class="anchored" data-anchor-id="loading-the-phenotype-data">Loading the phenotype data</h2>
+<p>Once we have loaded the resources, we have also to load each of the tables with additional phenotypes available for each cohort in the Opal server. For that purpose, we will use the same procedure as before, but when resolving the resources we will use the <code>as.resource.data.frame()</code> function. As a result, the pheno object will contain six <code>data.frames</code> corresponding to each of the tables with extra phenotype data for the cohorts.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-5_dc52bb053d964fb5ae82f0a45900792e">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">1</span>], <span class="st">"pheno"</span>, <span class="st">"HELIX.subclinical_cardio_BIB"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">2</span>], <span class="st">"pheno"</span>, <span class="st">"HELIX.subclinical_cardio_EDE"</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">3</span>], <span class="st">"pheno"</span>, <span class="st">"HELIX.subclinical_cardio_KAN"</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">4</span>], <span class="st">"pheno"</span>, <span class="st">"HELIX.subclinical_cardio_MOB"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">5</span>], <span class="st">"pheno"</span>, <span class="st">"HELIX.subclinical_cardio_RHE"</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.resource</span>(conns[<span class="dv">6</span>], <span class="st">"pheno"</span>, <span class="st">"HELIX.subclinical_cardio_SAB"</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>DSI<span class="sc">::</span><span class="fu">datashield.assign.expr</span>(<span class="at">conns =</span> conns, <span class="at">symbol =</span> <span class="st">"pheno_dt"</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>                            <span class="at">expr =</span> <span class="fu">as.symbol</span>(<span class="st">"as.resource.data.frame(pheno, strict = TRUE)"</span>),</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>                            <span class="at">async =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>To verify previous steps were performed correctly, we could apply some data analysis functions on created objects. For example, we can check the class of each object, or the name of the variables included, so we ensure that they exist on the remote session. Since each exposome_set object (pre, and pos) contains exposomeSet-type files for each cohort, the process for retrieving the names of variables in their case is slightly different than for the data.frames available in pheno. For that, we have two functions from the ds.ExposomeClient package called <code>ds.phenotypeNames()</code> and <code>ds.exposome_variables()</code>.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-6_e008aa1bcab6b922557046d667e386fb">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.class</span>(<span class="st">"exposome_set_pos"</span>)[[<span class="dv">1</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "ExposomeSet"
+attr(,"package")
+[1] "rexposome"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.class</span>(<span class="st">"pheno_dt"</span>)[[<span class="dv">1</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "data.frame"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.colnames</span>(<span class="st">"pheno_dt"</span>)[[<span class="dv">1</span>]][<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "HelixID"    "hs_bp_sys"  "hs_bp_dia"  "hs_zsys_bp" "hs_zdia_bp"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.phenotypeNames</span>(<span class="st">"exposome_set_pos"</span>, conns)[[<span class="dv">1</span>]][<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] ".id.1"          ".imp.1"         "HelixID"        "SampleID"      
+[5] "hs_bmicat_None"</code></pre>
+</div>
+</div>
+</section>
+<section id="merging-exposome-and-phenotype" class="level2">
+<h2 class="anchored" data-anchor-id="merging-exposome-and-phenotype">Merging exposome and phenotype</h2>
+<p>We will now merge the additional phenotype data available in “pheno” to the outcomes already available in each “exposome_set_pos” file. To do that, there is a function from the dsExposomeClient package called <code>ds.addPhenoData2ExposomeSet()</code>. This function add new phenotype data contained on a <code>data.frame</code> to an exposomeSet. The exposomeSet may or may not already have phenotype data. If the data.frame contains a phenotype already present on the exposomeSet, the server function will throw an exception. In the example, we will employ the “HelixID” variable as the identifier to match subjects from each dataset.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-7_94cd90844ce7e890b45f13c0a47b3fc2">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Adding phenotype data to post-natal datasets.</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.addPhenoData2ExposomeSet</span>(<span class="st">"exposome_set_pos"</span>, <span class="st">"pheno_dt"</span>, </span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>                            <span class="at">identifier_ExposomeSet =</span> <span class="st">"HelixID"</span>, </span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                            <span class="at">identifier_new_phenotypes =</span> <span class="st">"HelixID"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can check the process has been conducted successfully by exploring the dimensions of the new “exposome_set_pos” files created.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-8_de585827ef218a228a234d6738956c21">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.dim</span>(<span class="st">"exposome_set_pos"</span>)[[<span class="dv">1</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>exposures   samples phenotyes 
+      115       205        89 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ds.familyNames</span>(<span class="st">"exposome_set_pos"</span>)[[<span class="dv">1</span>]][<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Socio-eco capital_Fac" "Indoor air"            "Lifestyle"            
+[4] "Built Environment"     "Metals"               </code></pre>
+</div>
+</div>
+</section>
+<section id="exwas" class="level2">
+<h2 class="anchored" data-anchor-id="exwas">ExWAS</h2>
+<p>At this point, we are ready to apply the ExWAS on the systolic blood pressure phenotype. For simplification, we will start focusing in the particular set of exposures belonging the OCs family, which presented the highest significance values according to Warembourg et al.&nbsp;2019 paper.</p>
+<p>The ExWAS will be performed using the <code>ds.exwas()</code> function, from the “ds.ExposomeClient” package. As we will see, there are several ways of applying an ExWAS in DataSHIELD (pooled vs.&nbsp;meta), and the chosen method will depend on the characteristics of each project. Both methods are based on iteratively fitting different generalized linear models (GLMs) for each feature/exposure assessing association with the phenotype of interest. The “virtually” pooled approach is recommended when the user wants to analyse data from different sources and obtain results as if the data were located in a single computer. Nevertheless, it should be noticed that this method is not recommended when data are not properly harmonized, or are not comparable between cohorts, whatever the reason. On the other hand, the federated meta-analysis approach performs an ExWAS on every study server to later meta-analyse the results. Thanks to that, it overcomes the limitations raised when performing pooled analysis.</p>
+<p>In the next chunk of code, we present how to apply a pooled ExWAS to the HELIX data example. Since in our example, for simplification, we want to focus only on OCs exposures, it will be vital that our exposomeSet input files count on metadata or a description file. Then, we will use the “exposure_family” argument to indicate the family group of exposures to restrict our analysis to. Other arguments available in the <code>ds.exwas()</code> function include the “family” argument, which refers to the type of link function to be used in the GLM (e.g., gaussian for continuous outcomes, binary for binary outomes, or poisson for counts). It’s important to note that if the family argument does not match with the nature of the data available in the phenotype, the ExWAS will fail.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-9_ddfc552a94e831a02243138595b8c8be">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>res.pooled_adjusted_pos <span class="ot">&lt;-</span> <span class="fu">ds.exwas</span>(<span class="st">"hs_bp_sys ~ hs_child_age_days_None + hs_c_height_None + e3_sex_None + h_age_None + h_mbmi_None"</span>, <span class="at">type =</span> <span class="st">"pooled"</span>, </span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">adjust.by.study =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">exposures_family =</span> <span class="st">"OCs"</span>, </span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">Set =</span> <span class="st">"exposome_set_pos"</span>, <span class="at">family =</span> <span class="st">"gaussian"</span>,</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">tef =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-10_7ab43ae9fb5fe133c28ec4d338053ea9">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>DT<span class="sc">::</span><span class="fu">datatable</span>(res.pooled_adjusted_pos<span class="sc">$</span>exwas_results <span class="sc">|&gt;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>   dplyr<span class="sc">::</span><span class="fu">mutate</span>(dplyr<span class="sc">::</span><span class="fu">across</span>(is.numeric, round, <span class="at">digits =</span> <span class="dv">2</span>)),</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">options =</span> <span class="fu">list</span>(<span class="at">dom =</span> <span class="st">'pt'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+
+<div id="htmlwidget-c7005293d7c2c18e10b3" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c7005293d7c2c18e10b3">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8"],["hs_dde_cadj_Log2","hs_ddt_cadj_Log2","hs_hcb_cadj_Log2","hs_pcb118_cadj_Log2","hs_pcb138_cadj_Log2","hs_pcb153_cadj_Log2","hs_pcb170_cadj_Log2","hs_pcb180_cadj_Log2"],["OCs","OCs","OCs","OCs","OCs","OCs","OCs","OCs"],[-1.48,-0.15,-3.98,-1.81,-1.89,-2.24,-1.14,-1.23],[-2.09,-0.66,-5.55,-3.09,-2.98,-3.39,-1.77,-1.91],[-0.86,0.35,-2.4,-0.52,-0.81,-1.1,-0.51,-0.55],[0,0.55,0,0.01,0,0,0,0]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>exposure<\/th>\n      <th>family<\/th>\n      <th>coefficient<\/th>\n      <th>minE<\/th>\n      <th>maxE<\/th>\n      <th>p.value<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"pt","columnDefs":[{"className":"dt-right","targets":[3,4,5,6]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<p>Feel free to study the other exposure families to fully replicate the results of the paper.</p>
+<div class="cell" data-hash="use_case_3_cache/html/unnamed-chunk-11_bcaedfcaff512e240bb4baa53dbd13be">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">datashield.logout</span>(conns)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="doc-bibliography">
+<div id="ref-warembourg2019early" class="csl-entry" role="doc-biblioentry">
+Warembourg, Charline, Léa Maitre, Ibon Tamayo-Uria, Serena Fossati, Theano Roumeliotaki, Gunn Marit Aasvang, Sandra Andrusaityte, et al. 2019. <span>“Early-Life Environmental Exposures and Blood Pressure in Children.”</span> <em>Journal of the American College of Cardiology</em> 74 (10): 1317–28.
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
